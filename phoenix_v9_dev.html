@@ -431,6 +431,7 @@
   }
   const app = {
     state: {
+      machine:createMachine(),
       simRunning:false, paused:false,
       gridStarted:false, gridHealthy:false,
       genStarted:false, breaker:'OPEN',
