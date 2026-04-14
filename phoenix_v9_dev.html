@@ -290,7 +290,68 @@
     trip: `CMD :000011111100\n52A :111111000000\nTRIP:000000111111\n86  :000000001111`,
     fault:`FAULT:000001111100\n50/51:000000111100\nTRIP :000000011110\nLOCK :000000000111`
   };
+  const MODE = Object.freeze({
+    OFFLINE: 'OFFLINE',
+    IDLE: 'IDLE',
+    GRID_WARMUP: 'GRID_WARMUP',
+    GRID_READY: 'GRID_READY',
+    GEN_STARTING: 'GEN_STARTING',
+    GEN_READY: 'GEN_READY',
+    SYNC_WINDOW: 'SYNC_WINDOW',
+    BREAKER_CLOSING: 'BREAKER_CLOSING',
+    PARALLEL: 'PARALLEL',
+    TRIPPED: 'TRIPPED',
+    PAUSED: 'PAUSED'
+  });
 
+  const EVENT = Object.freeze({
+    SIM_START: 'SIM_START',
+    GRID_START: 'GRID_START',
+    GRID_HEALTHY: 'GRID_HEALTHY',
+    GEN_START: 'GEN_START',
+    GEN_STOP: 'GEN_STOP',
+    PAUSE_TOGGLE: 'PAUSE_TOGGLE',
+    RESET: 'RESET',
+    BREAKER_CLOSE_CMD: 'BREAKER_CLOSE_CMD',
+    BREAKER_CLOSE_CONFIRMED: 'BREAKER_CLOSE_CONFIRMED',
+    BREAKER_OPEN_CMD: 'BREAKER_OPEN_CMD',
+    PROTECTION_TRIP: 'PROTECTION_TRIP',
+    FAULT_INJECTED: 'FAULT_INJECTED',
+    FAULT_CLEARED: 'FAULT_CLEARED',
+    SYNC_READY: 'SYNC_READY',
+    SYNC_LOST: 'SYNC_LOST'
+  });
+
+  function createMachine() {
+    return {
+      mode: MODE.OFFLINE,
+      previousMode: MODE.OFFLINE
+    };
+  }
+
+  function machineResetState(prev) {
+    return {
+      ...prev,
+      simRunning: false,
+      paused: false,
+      gridStarted: false,
+      gridHealthy: false,
+      genStarted: false,
+      breaker: 'OPEN',
+      gridV: 0,
+      gridF: 0,
+      gridAngle: 0,
+      genV: 0,
+      genF: 0,
+      genAngle: 0,
+      phaseDeg: 0,
+      slipHz: 0,
+      currentA: 0,
+      pKW: 0,
+      qMVAr: 0,
+      sKVA: 0,
+      pf: 1,
+  }
   const app = {
     state: {
       simRunning:false, paused:false,
