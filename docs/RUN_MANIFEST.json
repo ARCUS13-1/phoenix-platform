@@ -1,11 +1,28 @@
 {
+  "schema_version": "1.0",
   "project": "phoenix-platform",
+  "default_branch": "main",
   "source_of_truth": "index.html",
+  "baseline_reference": "phoenix_v8_baseline_locked.html",
+  "dev_sandbox": "phoenix_v9_dev.html",
   "current_phase": "v9 state machine planning",
-  "last_validated_version": "v8",
+  "last_validated_runtime": "v8 mobile core",
+  "docs_last_reviewed": "2026-04-13",
+  "runtime_status": "index.html is the only shipped runtime authority",
+  "validated_features": [
+    "grid_generator_sync",
+    "synchroscope",
+    "breaker_states",
+    "fault_injection",
+    "analysis_logging",
+    "timing_studio",
+    "telemetry_overlay",
+    "single_file_mobile_runtime"
+  ],
   "notes": [
     "Single-file simulator remains canonical",
     "README is public-facing, not behavioral authority",
-    "Authority docs live in /docs"
+    "Authority docs live in /docs",
+    "No runtime behavior changes were made in the 2026-04-13 docs cleanup pass"
   ]
 }
