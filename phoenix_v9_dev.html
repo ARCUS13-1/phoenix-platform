@@ -279,7 +279,7 @@
   </main>
 
   <footer class="footer">
-    <span>Phoenix Engineering Platform © 2026 · v8 sync-lock build</span>
+    <span>Phoenix Engineering Platform © 2026 · v9-dev</span>
     <span id="clockText">--:--:--.---</span>
   </footer>
 </div>
@@ -291,66 +291,80 @@
     fault:`FAULT:000001111100\n50/51:000000111100\nTRIP :000000011110\nLOCK :000000000111`
   };
   const MODE = Object.freeze({
-    OFFLINE: 'OFFLINE',
-    IDLE: 'IDLE',
-    GRID_WARMUP: 'GRID_WARMUP',
-    GRID_READY: 'GRID_READY',
-    GEN_STARTING: 'GEN_STARTING',
-    GEN_READY: 'GEN_READY',
-    SYNC_WINDOW: 'SYNC_WINDOW',
-    BREAKER_CLOSING: 'BREAKER_CLOSING',
-    PARALLEL: 'PARALLEL',
-    TRIPPED: 'TRIPPED',
-    PAUSED: 'PAUSED'
-  });
-
-  const EVENT = Object.freeze({
-    SIM_START: 'SIM_START',
-    GRID_START: 'GRID_START',
-    GRID_HEALTHY: 'GRID_HEALTHY',
-    GEN_START: 'GEN_START',
-    GEN_STOP: 'GEN_STOP',
-    PAUSE_TOGGLE: 'PAUSE_TOGGLE',
-    RESET: 'RESET',
-    BREAKER_CLOSE_CMD: 'BREAKER_CLOSE_CMD',
-    BREAKER_CLOSE_CONFIRMED: 'BREAKER_CLOSE_CONFIRMED',
-    BREAKER_OPEN_CMD: 'BREAKER_OPEN_CMD',
-    PROTECTION_TRIP: 'PROTECTION_TRIP',
-    FAULT_INJECTED: 'FAULT_INJECTED',
-    FAULT_CLEARED: 'FAULT_CLEARED',
-    SYNC_READY: 'SYNC_READY',
-    SYNC_LOST: 'SYNC_LOST'
-  });
-
-  function createMachine() {
-    return {
-      mode: MODE.OFFLINE,
-      previousMode: MODE.OFFLINE
+      chaos: false,
+      autoMatch: false,
+      faults: new Set(),
+      brkrClosingTimer: 0,
+      postCloseHold: 0,
+      history: [],
+      machine: createMachine()
     };
   }
 
-  function machineResetState(prev) {
-    return {
-      ...prev,
-      simRunning: false,
-      paused: false,
-      gridStarted: false,
-      gridHealthy: false,
-      genStarted: false,
-      breaker: 'OPEN',
-      gridV: 0,
-      gridF: 0,
-      gridAngle: 0,
-      genV: 0,
-      genF: 0,
-      genAngle: 0,
-      phaseDeg: 0,
-      slipHz: 0,
-      currentA: 0,
-      pKW: 0,
-      qMVAr: 0,
-      sKVA: 0,
-      pf: 1,
+  function transition(machine, event, ctx) {
+    const mode = machine.mode;
+
+    switch (mode) {
+      case MODE.OFFLINE:
+        if (event === EVENT.SIM_START) return { ...machine, mode: MODE.IDLE };
+        return machine;
+
+      case MODE.IDLE:
+        if (event === EVENT.GRID_START) return { ...machine, mode: MODE.GRID_WARMUP };
+        if (event === EVENT.PAUSE_TOGGLE) return { ...machine, previousMode: mode, mode: MODE.PAUSED };
+        if (event === EVENT.RESET) return createMachine();
+        return machine;
+
+      case MODE.GRID_WARMUP:
+        if (event === EVENT.GRID_HEALTHY) return { ...machine, mode: MODE.GRID_READY };
+        if (event === EVENT.PAUSE_TOGGLE) return { ...machine, previousMode: mode, mode: MODE.PAUSED };
+        if (event === EVENT.RESET) return createMachine();
+        return machine;
+
+      case MODE.GRID_READY:
+        if (event === EVENT.GEN_START) return { ...machine, mode: MODE.GEN_STARTING };
+        if (event === EVENT.PAUSE_TOGGLE) return { ...machine, previousMode: mode, mode: MODE.PAUSED };
+        if (event === EVENT.RESET) return createMachine();
+        return machine;
+
+      case MODE.GEN_STARTING:
+      case MODE.GEN_READY:
+        if (ctx.syncSafe) return { ...machine, mode: MODE.SYNC_WINDOW };
+        if (event === EVENT.GEN_STOP) return { ...machine, mode: MODE.GRID_READY };
+        if (event === EVENT.PROTECTION_TRIP) return { ...machine, mode: MODE.TRIPPED };
+        if (event === EVENT.PAUSE_TOGGLE) return { ...machine, previousMode: mode, mode: MODE.PAUSED };
+        return { ...machine, mode: MODE.GEN_READY };
+
+      case MODE.SYNC_WINDOW:
+        if (event === EVENT.BREAKER_CLOSE_CMD && ctx.syncSafe) return { ...machine, mode: MODE.BREAKER_CLOSING };
+        if (!ctx.syncSafe || event === EVENT.SYNC_LOST) return { ...machine, mode: MODE.GEN_READY };
+        if (event === EVENT.GEN_STOP) return { ...machine, mode: MODE.GRID_READY };
+        if (event === EVENT.PROTECTION_TRIP) return { ...machine, mode: MODE.TRIPPED };
+        return machine;
+
+      case MODE.BREAKER_CLOSING:
+        if (event === EVENT.BREAKER_CLOSE_CONFIRMED) return { ...machine, mode: MODE.PARALLEL };
+        if (event === EVENT.PROTECTION_TRIP) return { ...machine, mode: MODE.TRIPPED };
+        return machine;
+
+      case MODE.PARALLEL:
+        if (event === EVENT.BREAKER_OPEN_CMD) return { ...machine, mode: MODE.GEN_READY };
+        if (event === EVENT.PROTECTION_TRIP) return { ...machine, mode: MODE.TRIPPED };
+        if (event === EVENT.GEN_STOP) return { ...machine, mode: MODE.TRIPPED };
+        return machine;
+
+      case MODE.TRIPPED:
+        if (event === EVENT.RESET) return { ...machine, mode: MODE.IDLE };
+        return machine;
+
+      case MODE.PAUSED:
+        if (event === EVENT.PAUSE_TOGGLE) return { ...machine, mode: machine.previousMode || MODE.IDLE };
+        if (event === EVENT.RESET) return createMachine();
+        return machine;
+
+      default:
+        return machine;
+    }
   }
   const app = {
     state: {
