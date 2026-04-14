@@ -486,6 +486,44 @@
       this.els.avrSlider.addEventListener('input', e=>{ this.state.avrSet = parseFloat(e.target.value); this.els.avrRead.textContent = this.state.avrSet.toFixed(2)+' kV'; });
       document.querySelectorAll('[data-fault]').forEach(b=>b.addEventListener('click', ()=>this.injectFault(b.dataset.fault)));
     },
+
+        deriveContext(){
+      const s = this.state;
+      const dv = Math.abs(s.genV - s.gridV) * 1000;
+      const df = Math.abs(s.genF - s.gridF);
+      const dphi = Math.abs(this.wrapDeg(s.phaseDeg));
+      const syncSafe = (
+        s.gridHealthy &&
+        s.genStarted &&
+        s.breaker === 'OPEN' &&
+        !s.faults.has('OVERCURRENT') &&
+        !s.faults.has('BRKR-STUCK') &&
+        dv < 500 &&
+        df < 0.03 &&
+        dphi < 5
+      );
+
+      return {
+        gridHealthy: s.gridHealthy,
+        genStarted: s.genStarted,
+        breaker: s.breaker,
+        faults: s.faults,
+        dv,
+        df,
+        dphi,
+        currentA: s.currentA,
+        syncSafe
+      };
+    },
+
+    dispatch(event){
+      const prev = this.state.machine.mode;
+      this.state.machine = transition(this.state.machine, event, this.deriveContext());
+      const next = this.state.machine.mode;
+      if(prev !== next){
+        this.log(`STATE ${prev} -> ${next}`, next === MODE.TRIPPED ? 'trip' : 'good');
+      }
+    },
     vibrate(pattern){ try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){} },
     log(msg, level=''){ const now = new Date(); const ts = now.toLocaleTimeString('en-US',{hour12:false}) + '.' + String(now.getMilliseconds()).padStart(3,'0'); const entry = {ts,msg,level}; this.state.logs.unshift(entry); this.renderLogs(); },
     renderLogs(highlight){
