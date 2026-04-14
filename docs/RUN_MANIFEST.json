@@ -26,3 +26,17 @@
     "No runtime behavior changes were made in the 2026-04-13 docs cleanup pass"
   ]
 }
+{
+  "task": "assess phoenix_v9_dev.html readiness for promotion and define next test phase",
+  "runtime_authority": "index.html",
+  "development_authority": "phoenix_v9_dev.html",
+  "ready_for_index_promotion": false,
+  "ready_for_next_testing_phase": true,
+  "first_fix": "resetAll",
+  "next_phase": [
+    "operator-control rewiring",
+    "physics event hooks",
+    "function checks"
+  ],
+  "status": "continue_in_dev"
+}
