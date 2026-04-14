@@ -1,0 +1,11 @@
+{
+  "project": "phoenix-platform",
+  "source_of_truth": "index.html",
+  "current_phase": "v9 state machine planning",
+  "last_validated_version": "v8",
+  "notes": [
+    "Single-file simulator remains canonical",
+    "README is public-facing, not behavioral authority",
+    "Authority docs live in /docs"
+  ]
+}
