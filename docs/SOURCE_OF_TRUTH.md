@@ -16,3 +16,10 @@ Rules:
   - live charts
   - timing / waveform view
   - analysis / logging
+
+## Non-Canonical Files
+
+- `phoenix_v8_baseline_locked.html` = rollback reference only
+- `phoenix_v9_dev.html` = temporary development sandbox only
+
+These files are not authoritative. If they conflict with `index.html`, `index.html` wins.
