@@ -530,14 +530,70 @@
       const box = this.els.log; box.innerHTML='';
       this.state.logs.slice(0,300).forEach((e, i)=>{ const div=document.createElement('div'); div.className='log-entry ' + (e.level||''); if(highlight===i) div.style.outline='1px solid var(--cyan)'; div.textContent = '['+e.ts+'] ' + e.msg; box.appendChild(div); });
     },
-    startSim(){ if(this.state.simRunning) return; this.state.simRunning = true; this.state.gridV = 0; this.state.gridF = 0; this.log('Simulation started.', 'good'); this.vibrate(12); },
-    startGrid(){ if(!this.state.simRunning){ this.startSim(); }
-      this.state.gridStarted = true; this.log('Grid start sequence initiated.', 'good'); this.vibrate(12); },
-    startGen(){ if(!this.state.gridHealthy){ this.log('Generator start blocked. Wait for Grid Healthy.', 'warn'); return; }
-      if(this.state.breaker === 'TRIPPED'){ this.log('Generator start blocked. Reset breaker first.', 'warn'); return; }
-      this.state.genStarted = true; this.log('Generator prime mover started.', 'good'); this.vibrate(12); },
-    stopGen(){ this.state.genStarted = false; this.state.genV = Math.max(0, this.state.genV - 0.6); this.state.genF = Math.max(0, this.state.genF - 2.0); if(this.state.breaker==='CLOSED') this.tripBreaker('Generator stopped while breaker closed'); this.log('Generator stop command issued.', 'warn'); },
-    togglePause(){ this.state.paused = !this.state.paused; this.log(this.state.paused ? 'Simulation paused.' : 'Simulation resumed.', 'warn'); },
+    startSim(){
+  if(this.state.simRunning) return;
+
+  this.state.simRunning = true;
+  this.state.gridV = 0;
+  this.state.gridF = 0;
+
+  this.dispatch(EVENT.SIM_START);
+
+  this.log('Simulation started.', 'good');
+  this.vibrate(12);
+},
+    startGrid(){
+  if(!this.state.simRunning){
+    this.startSim();
+  }
+
+  this.state.gridStarted = true;
+  this.dispatch(EVENT.GRID_START);
+
+  this.log('Grid start sequence initiated.', 'good');
+  this.vibrate(12);
+},
+    startGen(){
+  const mode = this.state.machine.mode;
+  const allowed =
+    mode === MODE.GRID_READY ||
+    mode === MODE.GEN_READY ||
+    mode === MODE.GEN_STARTING ||
+    mode === MODE.SYNC_WINDOW;
+
+  if(!allowed){
+    this.log('Generator start blocked. Grid not ready.', 'warn');
+    return;
+  }
+
+  if(this.state.breaker === 'TRIPPED'){
+    this.log('Generator start blocked. Reset breaker first.', 'warn');
+    return;
+  }
+
+  this.state.genStarted = true;
+  this.dispatch(EVENT.GEN_START);
+  this.log('Generator prime mover started.', 'good');
+  this.vibrate(12);
+},
+    stopGen(){
+  this.state.genStarted = false;
+  this.state.genV = Math.max(0, this.state.genV - 0.6);
+  this.state.genF = Math.max(0, this.state.genF - 2.0);
+  this.dispatch(EVENT.GEN_STOP);
+
+  if(this.state.breaker === 'CLOSED'){
+    this.tripBreaker('Generator stopped while breaker closed');
+    return;
+  }
+
+  this.log('Generator stop command issued.', 'warn');
+},
+    togglePause(){
+  this.state.paused = !this.state.paused;
+  this.dispatch(EVENT.PAUSE_TOGGLE);
+  this.log(this.state.paused ? 'Simulation paused.' : 'Simulation resumed.', 'warn');
+},
     toggleChaos(){ this.state.chaos = !this.state.chaos; document.getElementById('btnChaos').textContent = this.state.chaos ? 'CHAOS ON' : 'CHAOS OFF'; this.log('Grid chaos ' + (this.state.chaos ? 'enabled' : 'disabled') + '.', this.state.chaos ? 'warn':'good'); },
     toggleAutoMatch(){ this.state.autoMatch = !this.state.autoMatch; const txt = this.state.autoMatch ? 'AUTO MATCH ON' : 'AUTO MATCH'; document.getElementById('btnAutoMatch').textContent = txt; const dock = document.getElementById('btnAutoMatchDock'); if(dock) dock.textContent = txt; this.log('Auto-match ' + (this.state.autoMatch ? 'enabled' : 'disabled') + '.', this.state.autoMatch ? 'good':'warn'); },
     raiseLoad(){ this.state.loadDemandKW = this.clamp(this.state.loadDemandKW + 350, 1800, 9000); this.log('Load request raised to ' + Math.round(this.state.loadDemandKW) + ' kW.', 'good'); },
@@ -554,22 +610,104 @@
   this.log('Full system reset.', 'warn');
   this.updateUI();
 },
-    resetBreaker(){ if(this.state.breaker !== 'TRIPPED' && this.state.breaker !== 'OPEN'){ this.log('Breaker reset ignored. Breaker is not tripped.', 'warn'); return; } this.state.breaker = 'OPEN'; this.state.brkrClosingTimer = 0; this.log('Breaker reset to OPEN.', 'good'); },
-    toggleBreakerCommand(){ if(this.state.breaker === 'TRIPPED'){ this.log('Close blocked. Breaker is tripped.', 'warn'); return; }
-      if(this.state.breaker === 'CLOSED') { this.state.breaker = 'OPEN'; this.log('Breaker opened by operator.', 'warn'); this.vibrate(12); return; }
-      if(this.state.faults.has('BRKR-STUCK')){ this.log('Breaker close failed. Breaker stuck fault active.', 'trip'); this.vibrate([120,50,120]); return; }
-      if(!this.state.gridHealthy || !this.state.genStarted){ this.log('Close blocked. Grid or generator not ready.', 'warn'); return; }
-      const dv = Math.abs(this.state.gridV - this.state.genV) * 1000;
-      const df = Math.abs(this.state.gridF - this.state.genF);
-      const dp = Math.abs(this.wrapDeg(this.state.phaseDeg));
-      if(dv < 500 && df < 0.03 && dp < 5) {
-        this.state.brkrClosingTimer = 0.12; this.state.postCloseHold = 1.2; this.log('Breaker close issued in sync window.', 'good'); this.vibrate([18,30,18]);
-      } else {
-        this.tripBreaker(`Unsafe sync attempt. ΔV ${dv.toFixed(0)} V, Δf ${df.toFixed(3)} Hz, Δφ ${dp.toFixed(1)}°`);
-      }
-    },
-    tripBreaker(reason){ this.state.breaker = 'TRIPPED'; this.state.brkrClosingTimer = 0; this.state.currentA = 0; this.state.pKW = 0; this.state.qMVAr = 0; this.state.sKVA = 0; this.state.pf = 1; this.log(reason, 'trip'); this.vibrate([100,60,100,60,180]); },
-    injectFault(name){ this.state.faults.add(name); this.log(name + ' fault injected.', 'trip'); this.vibrate([60,40,100]); if(name==='PHASE-ERR'){ this.state.genAngle += 22; } if(name==='OVERCURRENT' && this.state.breaker==='CLOSED'){ this.tripBreaker('50/51 trip on overcurrent fault'); } },
+    resetBreaker(){
+  if(this.state.breaker !== 'TRIPPED' && this.state.breaker !== 'OPEN'){
+    this.log('Breaker reset ignored. Breaker is not tripped.', 'warn');
+    return;
+  }
+
+  this.state.breaker = 'OPEN';
+  this.state.brkrClosingTimer = 0;
+
+  const ctx = this.deriveContext();
+
+  if(!this.state.simRunning){
+    this.state.machine = { ...this.state.machine, mode: MODE.OFFLINE };
+  } else if(!this.state.gridStarted){
+    this.state.machine = { ...this.state.machine, mode: MODE.IDLE };
+  } else if(!this.state.gridHealthy){
+    this.state.machine = { ...this.state.machine, mode: MODE.GRID_WARMUP };
+  } else if(!this.state.genStarted){
+    this.state.machine = { ...this.state.machine, mode: MODE.GRID_READY };
+  } else {
+    this.state.machine = {
+      ...this.state.machine,
+      mode: ctx.syncSafe ? MODE.SYNC_WINDOW : MODE.GEN_READY
+    };
+  }
+
+  this.log('Breaker reset to OPEN.', 'good');
+},
+    toggleBreakerCommand(){
+  if(this.state.breaker === 'TRIPPED'){
+    this.log('Close blocked. Breaker is tripped.', 'warn');
+    return;
+  }
+
+  if(this.state.breaker === 'CLOSED'){
+    this.state.breaker = 'OPEN';
+    this.dispatch(EVENT.BREAKER_OPEN_CMD);
+    this.log('Breaker opened by operator.', 'warn');
+    this.vibrate(12);
+    return;
+  }
+
+  if(this.state.faults.has('BRKR-STUCK')){
+    this.log('Breaker close failed. Breaker stuck fault active.', 'trip');
+    this.vibrate([120,50,120]);
+    return;
+  }
+
+  const ctx = this.deriveContext();
+
+  if(this.state.machine.mode === MODE.GEN_READY && ctx.syncSafe){
+    this.dispatch(EVENT.SYNC_READY);
+  }
+
+  if(!ctx.syncSafe){
+    this.tripBreaker(
+      `Unsafe sync attempt. ΔV ${ctx.dv.toFixed(0)} V, Δf ${ctx.df.toFixed(3)} Hz, Δφ ${ctx.dphi.toFixed(1)}°`
+    );
+    return;
+  }
+
+  if(this.state.machine.mode !== MODE.SYNC_WINDOW){
+    this.log('Close blocked. Not in sync window.', 'warn');
+    return;
+  }
+
+  this.dispatch(EVENT.BREAKER_CLOSE_CMD);
+  this.state.brkrClosingTimer = 0.12;
+  this.state.postCloseHold = 1.2;
+  this.log('Breaker close issued in sync window.', 'good');
+  this.vibrate([18,30,18]);
+},
+    tripBreaker(reason){
+  this.state.breaker = 'TRIPPED';
+  this.state.brkrClosingTimer = 0;
+  this.state.currentA = 0;
+  this.state.pKW = 0;
+  this.state.qMVAr = 0;
+  this.state.sKVA = 0;
+  this.state.pf = 1;
+  this.dispatch(EVENT.PROTECTION_TRIP);
+  this.log(reason, 'trip');
+  this.vibrate([100,60,100,60,180]);
+},
+   injectFault(name){
+  this.state.faults.add(name);
+  this.dispatch(EVENT.FAULT_INJECTED);
+  this.log(name + ' fault injected.', 'trip');
+  this.vibrate([60,40,100]);
+
+  if(name === 'PHASE-ERR'){
+    this.state.genAngle += 22;
+  }
+
+  if(name === 'OVERCURRENT' && this.state.breaker === 'CLOSED'){
+    this.tripBreaker('50/51 trip on overcurrent fault');
+  }
+},
     clearFaults(){ if(this.state.faults.size===0){ this.log('No active faults to clear.', 'warn'); return; } this.state.faults.clear(); this.log('All faults cleared.', 'good'); },
     applyPreset(key){ this.els.timingPreset.value = key; this.els.timingInput.value = presets[key] || presets.sync; this.renderTiming(); },
     parseTiming(text){ return text.split(/\n+/).map(s=>s.trim()).filter(Boolean).map(line=>{ const idx=line.indexOf(':'); if(idx<0) return null; const name=line.slice(0,idx).trim(); const seq=line.slice(idx+1).trim().replace(/\s+/g,''); return {name, seq}; }).filter(Boolean); },
@@ -598,51 +736,137 @@
     clamp(v,min,max){ return Math.min(max, Math.max(min, v)); },
     wrapDeg(d){ let x = d % 360; if(x > 180) x -= 360; if(x < -180) x += 360; return x; },
     pushHistory(){ this.state.history.push({ t:performance.now(), gridF:this.state.gridF, genF:this.state.genF, currentA:this.state.currentA, pKW:this.state.pKW }); if(this.state.history.length > 300) this.state.history.shift(); },
-    updatePhysics(dt){ if(this.state.paused) return; const s = this.state;
-      if(s.gridStarted){ s.gridF += (this.state.telemetryFreq - s.gridF) * dt * (s.gridHealthy ? 0.7 : 0.25); s.gridV += (13.8 - s.gridV) * dt * 0.55; if(s.gridV > 13.5 && s.gridF > 59.8) s.gridHealthy = true; }
-      else { s.gridF += (0 - s.gridF) * dt * 0.8; s.gridV += (0 - s.gridV) * dt * 0.8; s.gridHealthy = false; }
-      if(s.chaos && s.gridStarted){ s.gridF += (Math.random()-0.5)*0.01; s.gridV += (Math.random()-0.5)*0.025; }
-      if(s.faults.has('V-SAG')) s.gridV = Math.max(12.1, s.gridV - dt*0.35);
-      if(s.faults.has('F-SURGE')) s.gridF = Math.min(60.35, s.gridF + dt*0.18);
+    updatePhysics(dt){
+  if(this.state.paused) return;
+  const s = this.state;
+  const prevGridHealthy = s.gridHealthy;
 
-      if(s.genStarted){
-        if(s.autoMatch && s.breaker !== 'CLOSED'){ s.govSet += (s.gridF - s.govSet)*dt*0.8; s.avrSet += (s.gridV - s.avrSet)*dt*0.8; this.els.govSlider.value = s.govSet.toFixed(2); this.els.govRead.textContent = s.govSet.toFixed(2)+' Hz'; this.els.avrSlider.value = s.avrSet.toFixed(2); this.els.avrRead.textContent = s.avrSet.toFixed(2)+' kV'; }
-        if(s.breaker === 'CLOSED'){
-          const demandRatio = this.clamp((s.loadDemandKW - 4200)/3800, -0.2, 1.2);
-          const droopTarget = this.clamp(demandRatio * 0.065, -0.01, 0.065);
-          s.governorDroopHz += (droopTarget - s.governorDroopHz) * dt * 0.9;
-          s.genF += ((s.gridF - s.governorDroopHz) - s.genF) * dt * 1.8;
-          s.genV += (s.gridV - s.genV) * dt * 2.0;
-          s.genAngle = s.gridAngle;
-        } else {
-          s.genF += (s.govSet - s.genF) * dt * 0.55;
-          s.genV += (s.avrSet - s.genV) * dt * 0.75;
-        }
-      } else { s.genF += (0 - s.genF) * dt * 1.3; s.genV += (0 - s.genV) * dt * 1.3; s.governorDroopHz += (0 - s.governorDroopHz) * dt * 2; }
+  if(s.gridStarted){
+    s.gridF += (this.state.telemetryFreq - s.gridF) * dt * (s.gridHealthy ? 0.7 : 0.25);
+    s.gridV += (13.8 - s.gridV) * dt * 0.55;
+    if(s.gridV > 13.5 && s.gridF > 59.8) s.gridHealthy = true;
+  } else {
+    s.gridF += (0 - s.gridF) * dt * 0.8;
+    s.gridV += (0 - s.gridV) * dt * 0.8;
+    s.gridHealthy = false;
+  }
 
-      if(s.faults.has('PHASE-ERR') && s.breaker !== 'CLOSED') s.genAngle += 50*dt;
-      s.gridAngle += s.gridF*360*dt;
-      if(s.breaker !== 'CLOSED') s.genAngle += s.genF*360*dt;
-      s.phaseDeg = this.wrapDeg(s.genAngle - s.gridAngle); s.slipHz = s.genF - s.gridF;
+  if(!prevGridHealthy && s.gridHealthy){
+    this.dispatch(EVENT.GRID_HEALTHY);
+  }
 
-      if(s.brkrClosingTimer > 0){ s.brkrClosingTimer -= dt; if(s.brkrClosingTimer <= 0){ s.breaker = 'CLOSED'; s.genAngle = s.gridAngle; this.log('Breaker is CLOSED.', 'good'); } }
-      if(s.postCloseHold > 0) s.postCloseHold -= dt;
+  if(s.chaos && s.gridStarted){
+    s.gridF += (Math.random() - 0.5) * 0.01;
+    s.gridV += (Math.random() - 0.5) * 0.025;
+  }
 
-      if(s.breaker === 'CLOSED'){
-        const dV = s.genV - s.gridV; const dF = s.genF - s.gridF; const dP = this.wrapDeg(s.phaseDeg);
-        s.pKW += (s.loadDemandKW - s.pKW) * dt * 1.3;
-        s.qMVAr += (this.clamp(dV * 2.2, -3.5, 3.5) - s.qMVAr) * dt * 1.1;
-        s.sKVA = Math.round(Math.sqrt(s.pKW*s.pKW + (s.qMVAr*1000)*(s.qMVAr*1000)));
-        s.pf = s.sKVA > 1 ? this.clamp(Math.abs(s.pKW)/s.sKVA, 0, 1) : 1;
-        const baseA = Math.abs(s.sKVA) > 1 ? (s.sKVA*1000)/(Math.sqrt(3)*Math.max(1,s.gridV*1000)) : 0;
-        const syncStressA = Math.abs(dP)*8 + Math.abs(dF)*1800 + Math.abs(dV)*120;
-        s.currentA = baseA + syncStressA + 10;
-        if(s.faults.has('OVERCURRENT')) s.currentA = 2200;
-        if(s.postCloseHold <= 0 && (Math.abs(dV)*1000 > 1000 || Math.abs(dF) > 0.2 || s.currentA > 1500)){ this.tripBreaker(`Protection trip. ΔV ${(Math.abs(dV)*1000).toFixed(0)} V, Δf ${Math.abs(dF).toFixed(3)} Hz, I ${s.currentA.toFixed(0)} A`); }
-      } else { s.currentA += (0 - s.currentA) * dt * 3; s.pKW += (0 - s.pKW) * dt * 3; s.qMVAr += (0 - s.qMVAr) * dt * 3; s.sKVA = 0; s.pf = 1; }
+  if(s.faults.has('V-SAG')) s.gridV = Math.max(12.1, s.gridV - dt * 0.35);
+  if(s.faults.has('F-SURGE')) s.gridF = Math.min(60.35, s.gridF + dt * 0.18);
 
-      const tempTarget = 25 + (Math.max(0,s.currentA-80)/12) + Math.max(0, Math.abs(s.qMVAr))*2.8 + (s.chaos ? 1.8 : 0); s.genTempC += (tempTarget - s.genTempC) * dt * 0.35; s.gridV = this.clamp(s.gridV, 0, 15.5); s.genV = this.clamp(s.genV, 0, 15.5); s.gridF = this.clamp(s.gridF, 0, 61); s.genF = this.clamp(s.genF, 0, 61);
-    },
+  if(s.genStarted){
+    if(s.autoMatch && s.breaker !== 'CLOSED'){
+      s.govSet += (s.gridF - s.govSet) * dt * 0.8;
+      s.avrSet += (s.gridV - s.avrSet) * dt * 0.8;
+      this.els.govSlider.value = s.govSet.toFixed(2);
+      this.els.govRead.textContent = s.govSet.toFixed(2) + ' Hz';
+      this.els.avrSlider.value = s.avrSet.toFixed(2);
+      this.els.avrRead.textContent = s.avrSet.toFixed(2) + ' kV';
+    }
+
+    if(s.breaker === 'CLOSED'){
+      const demandRatio = this.clamp((s.loadDemandKW - 4200) / 3800, -0.2, 1.2);
+      const droopTarget = this.clamp(demandRatio * 0.065, -0.01, 0.065);
+      s.governorDroopHz += (droopTarget - s.governorDroopHz) * dt * 0.9;
+      s.genF += ((s.gridF - s.governorDroopHz) - s.genF) * dt * 1.8;
+      s.genV += (s.gridV - s.genV) * dt * 2.0;
+      s.genAngle = s.gridAngle;
+    } else {
+      s.genF += (s.govSet - s.genF) * dt * 0.55;
+      s.genV += (s.avrSet - s.genV) * dt * 0.75;
+    }
+  } else {
+    s.genF += (0 - s.genF) * dt * 1.3;
+    s.genV += (0 - s.genV) * dt * 1.3;
+    s.governorDroopHz += (0 - s.governorDroopHz) * dt * 2;
+  }
+
+  if(s.faults.has('PHASE-ERR') && s.breaker !== 'CLOSED') s.genAngle += 50 * dt;
+
+  s.gridAngle += s.gridF * 360 * dt;
+  if(s.breaker !== 'CLOSED') s.genAngle += s.genF * 360 * dt;
+
+  s.phaseDeg = this.wrapDeg(s.genAngle - s.gridAngle);
+  s.slipHz = s.genF - s.gridF;
+
+  const ctx = this.deriveContext();
+
+  if(this.state.machine.mode === MODE.GEN_STARTING){
+    this.dispatch(ctx.syncSafe ? EVENT.SYNC_READY : EVENT.SYNC_LOST);
+  } else if(ctx.syncSafe && this.state.machine.mode === MODE.GEN_READY){
+    this.dispatch(EVENT.SYNC_READY);
+  } else if(!ctx.syncSafe && this.state.machine.mode === MODE.SYNC_WINDOW){
+    this.dispatch(EVENT.SYNC_LOST);
+  }
+
+  if(s.brkrClosingTimer > 0){
+    s.brkrClosingTimer -= dt;
+    if(s.brkrClosingTimer <= 0){
+      s.breaker = 'CLOSED';
+      s.genAngle = s.gridAngle;
+      this.dispatch(EVENT.BREAKER_CLOSE_CONFIRMED);
+      this.log('Breaker is CLOSED.', 'good');
+    }
+  }
+
+  if(s.postCloseHold > 0) s.postCloseHold -= dt;
+
+  if(s.breaker === 'CLOSED'){
+    const dV = s.genV - s.gridV;
+    const dF = s.genF - s.gridF;
+    const dP = this.wrapDeg(s.phaseDeg);
+
+    s.pKW += (s.loadDemandKW - s.pKW) * dt * 1.3;
+    s.qMVAr += (this.clamp(dV * 2.2, -3.5, 3.5) - s.qMVAr) * dt * 1.1;
+    s.sKVA = Math.round(Math.sqrt(s.pKW * s.pKW + (s.qMVAr * 1000) * (s.qMVAr * 1000)));
+    s.pf = s.sKVA > 1 ? this.clamp(Math.abs(s.pKW) / s.sKVA, 0, 1) : 1;
+
+    const baseA = Math.abs(s.sKVA) > 1
+      ? (s.sKVA * 1000) / (Math.sqrt(3) * Math.max(1, s.gridV * 1000))
+      : 0;
+
+    const syncStressA = Math.abs(dP) * 8 + Math.abs(dF) * 1800 + Math.abs(dV) * 120;
+    s.currentA = baseA + syncStressA + 10;
+
+    if(s.faults.has('OVERCURRENT')) s.currentA = 2200;
+
+    if(
+      s.postCloseHold <= 0 &&
+      (Math.abs(dV) * 1000 > 1000 || Math.abs(dF) > 0.2 || s.currentA > 1500)
+    ){
+      this.tripBreaker(
+        `Protection trip. ΔV ${(Math.abs(dV) * 1000).toFixed(0)} V, Δf ${Math.abs(dF).toFixed(3)} Hz, I ${s.currentA.toFixed(0)} A`
+      );
+    }
+  } else {
+    s.currentA += (0 - s.currentA) * dt * 3;
+    s.pKW += (0 - s.pKW) * dt * 3;
+    s.qMVAr += (0 - s.qMVAr) * dt * 3;
+    s.sKVA = 0;
+    s.pf = 1;
+  }
+
+  const tempTarget =
+    25 +
+    (Math.max(0, s.currentA - 80) / 12) +
+    Math.max(0, Math.abs(s.qMVAr)) * 2.8 +
+    (s.chaos ? 1.8 : 0);
+
+  s.genTempC += (tempTarget - s.genTempC) * dt * 0.35;
+  s.gridV = this.clamp(s.gridV, 0, 15.5);
+  s.genV = this.clamp(s.genV, 0, 15.5);
+  s.gridF = this.clamp(s.gridF, 0, 61);
+  s.genF = this.clamp(s.genF, 0, 61);
+},
     updateUI(){ const s=this.state;
       this.els.gridBrief.textContent = (s.gridV*1000).toFixed(0) + ' V'; this.els.gridSub.textContent = s.gridF.toFixed(3) + ' Hz';
       this.els.genBrief.textContent = (s.genV*1000).toFixed(0) + ' V'; this.els.genSub.textContent = s.genF.toFixed(3) + ' Hz';
