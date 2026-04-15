@@ -708,7 +708,15 @@
     this.tripBreaker('50/51 trip on overcurrent fault');
   }
 },
-    clearFaults(){ if(this.state.faults.size===0){ this.log('No active faults to clear.', 'warn'); return; } this.state.faults.clear(); this.log('All faults cleared.', 'good'); },
+    clearFaults(){
+  if(this.state.faults.size===0){
+    this.log('No active faults to clear.', 'warn');
+    return;
+  }
+  this.state.faults.clear();
+  this.dispatch(EVENT.FAULT_CLEARED);
+  this.log('All faults cleared.', 'good');
+},
     applyPreset(key){ this.els.timingPreset.value = key; this.els.timingInput.value = presets[key] || presets.sync; this.renderTiming(); },
     parseTiming(text){ return text.split(/\n+/).map(s=>s.trim()).filter(Boolean).map(line=>{ const idx=line.indexOf(':'); if(idx<0) return null; const name=line.slice(0,idx).trim(); const seq=line.slice(idx+1).trim().replace(/\s+/g,''); return {name, seq}; }).filter(Boolean); },
     renderTiming(){ const lanes = this.parseTiming(this.els.timingInput.value); const cellW = 22, laneH = 34, left=84, top=16; const maxLen = Math.max(1, ...lanes.map(l=>l.seq.length)); const width = left + maxLen*cellW + 20; const height = top + lanes.length*laneH + 20; let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">`;
