@@ -541,7 +541,19 @@
     toggleChaos(){ this.state.chaos = !this.state.chaos; document.getElementById('btnChaos').textContent = this.state.chaos ? 'CHAOS ON' : 'CHAOS OFF'; this.log('Grid chaos ' + (this.state.chaos ? 'enabled' : 'disabled') + '.', this.state.chaos ? 'warn':'good'); },
     toggleAutoMatch(){ this.state.autoMatch = !this.state.autoMatch; const txt = this.state.autoMatch ? 'AUTO MATCH ON' : 'AUTO MATCH'; document.getElementById('btnAutoMatch').textContent = txt; const dock = document.getElementById('btnAutoMatchDock'); if(dock) dock.textContent = txt; this.log('Auto-match ' + (this.state.autoMatch ? 'enabled' : 'disabled') + '.', this.state.autoMatch ? 'good':'warn'); },
     raiseLoad(){ this.state.loadDemandKW = this.clamp(this.state.loadDemandKW + 350, 1800, 9000); this.log('Load request raised to ' + Math.round(this.state.loadDemandKW) + ' kW.', 'good'); },
-    resetAll(){ clearTimeout(this.state.replayTimer); this.state = {...this.state, simRunning:false, paused:false, gridStarted:false, gridHealthy:false, genStarted:false, breaker:'OPEN', gridV:0, gridF:0, gridAngle:0, genV:0, genF:0, genAngle:0, phaseDeg:0, slipHz:0, currentA:0, pKW:0, qMVAr:0, sKVA:0, pf:1, loadDemandKW:4200, governorDroopHz:0, genTempC:25, chaos:false, autoMatch:false, faults:new Set(), brkrClosingTimer:0, postCloseHold:0, history:[]}; document.getElementById('btnChaos').textContent='CHAOS OFF'; document.getElementById('btnAutoMatch').textContent='AUTO MATCH'; this.log('Full system reset.', 'warn'); this.updateUI(); },
+    resetAll(){
+  clearTimeout(this.state.replayTimer);
+  this.state = machineResetState(this.state);
+
+  document.getElementById('btnChaos').textContent = 'CHAOS OFF';
+  document.getElementById('btnAutoMatch').textContent = 'AUTO MATCH';
+
+  const dock = document.getElementById('btnAutoMatchDock');
+  if(dock) dock.textContent = 'AUTO MATCH';
+
+  this.log('Full system reset.', 'warn');
+  this.updateUI();
+},
     resetBreaker(){ if(this.state.breaker !== 'TRIPPED' && this.state.breaker !== 'OPEN'){ this.log('Breaker reset ignored. Breaker is not tripped.', 'warn'); return; } this.state.breaker = 'OPEN'; this.state.brkrClosingTimer = 0; this.log('Breaker reset to OPEN.', 'good'); },
     toggleBreakerCommand(){ if(this.state.breaker === 'TRIPPED'){ this.log('Close blocked. Breaker is tripped.', 'warn'); return; }
       if(this.state.breaker === 'CLOSED') { this.state.breaker = 'OPEN'; this.log('Breaker opened by operator.', 'warn'); this.vibrate(12); return; }
