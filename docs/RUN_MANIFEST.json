@@ -40,3 +40,13 @@
   ],
   "status": "continue_in_dev"
 }
+{
+  "task": "phase_4_operator_control_rewiring_step_1_resetAll",
+  "file": "phoenix_v9_dev.html",
+  "method_changed": "resetAll",
+  "change_type": "replace old spread-reset with machineResetState helper",
+  "runtime_behavior_changed": true,
+  "promotion_ready": false,
+  "next_method": "startSim",
+  "as_of": "2026-04-14"
+}
