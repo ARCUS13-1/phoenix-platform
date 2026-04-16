@@ -975,8 +975,16 @@ s.slipHz = s.breaker === 'CLOSED' ? 0 : (s.genF - s.gridF);
   s.genF = this.clamp(s.genF, 0, 61);
 },
     updateUI(){ const s=this.state;
-      this.els.gridBrief.textContent = (s.gridV*1000).toFixed(0) + ' V'; this.els.gridSub.textContent = s.gridF.toFixed(3) + ' Hz';
-      this.els.genBrief.textContent = (s.genV*1000).toFixed(0) + ' V'; this.els.genSub.textContent = s.genF.toFixed(3) + ' Hz';
+      const displayGridV = s.gridV;
+      const displayGridF = s.gridF;
+      const displayGenV = s.breaker === 'CLOSED' ? s.gridV : s.genV;
+      const displayGenF = s.breaker === 'CLOSED' ? s.gridF : s.genF;
+
+      this.els.gridBrief.textContent = (displayGridV*1000).toFixed(0) + ' V';
+      this.els.gridSub.textContent = displayGridF.toFixed(3) + ' Hz';
+      this.els.genBrief.textContent = (displayGenV*1000).toFixed(0) + ' V';
+      this.els.genSub.textContent = displayGenF.toFixed(3) + ' Hz';
+
       this.els.breakerBrief.textContent = s.breaker; this.els.breakerBrief.className = 'value ' + (s.breaker==='CLOSED'?'status-closed':s.breaker==='TRIPPED'?'status-trip':'status-open');
       this.els.syncSub.textContent = 'Δf ' + Math.abs(s.slipHz).toFixed(3) + ' Hz · Δφ ' + Math.abs(this.wrapDeg(s.phaseDeg)).toFixed(1) + '°';
       this.els.powerBrief.textContent = Math.round(s.pKW) + ' kW'; this.els.currentSub.textContent = s.currentA.toFixed(0) + ' A · PF ' + s.pf.toFixed(2);
