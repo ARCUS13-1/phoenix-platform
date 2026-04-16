@@ -21,3 +21,34 @@
 ### Notes
 - No runtime behavior changes were made in this pass
 - This was a docs/authority cleanup only
+## Unreleased
+
+### Added
+- V9 explicit machine state constants (`MODE`)
+- V9 event constants (`EVENT`)
+- `createMachine()` machine-state factory
+- `createInitialState()` cold baseline state factory
+- `machineResetState(prev)` reset helper
+- `deriveContext()` sync-safety context evaluation
+- `dispatch(event)` state transition logging
+- `applyModeDerivedState()` machine-to-runtime state synchronization
+
+### Changed
+- Rewired core operator controls in `phoenix_v9_dev.html` to route through dispatch/event transitions
+- Reset behavior now derives from a deterministic cold baseline
+- `updatePhysics(dt)` now emits machine events for grid healthy, sync ready/lost, and breaker close confirmation
+- `updateUI()` now normalizes displayed generator voltage/frequency to grid values when breaker is closed
+
+### Validated
+- Startup sequence remains intact in V9 dev
+- Sync window entry remains intact in V9 dev
+- Breaker close into parallel remains intact in V9 dev
+- Load raise remains intact in V9 dev
+- Chaos toggle remains intact in V9 dev
+- Full system reset logs correctly in V9 dev
+
+### Pending Validation
+- Closed-state display truth patch in `updateUI()`
+- State-aware breaker button labeling
+- Scenario runner scaffolding
+- Trip summary and chart markers
