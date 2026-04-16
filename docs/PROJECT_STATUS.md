@@ -38,8 +38,8 @@
 - [x] Baseline file locked
 - [x] Step 1 - Explicit state machine scaffold integrated
 - [x] Step 1A - Deterministic reset baseline validated
-- [~] Step 2 - Command layer / next action integration
-- [~] Step 2A - Closed-state display truth patch applied, awaiting validation
+- [x] Step 2 - Command layer / next action integration
+- [x] Step 2A - Closed-state display truth patch applied, awaiting validation
 - [ ] Step 3 - State-aware breaker button labels
 - [ ] Step 4 - Quickstart scenario runner
 - [ ] Step 5 - Failure scenario runner
