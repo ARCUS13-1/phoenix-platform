@@ -988,14 +988,16 @@ const modeLabel = mode.replace(/_/g, ' ');
 
 let badgeClass = 'status-offline';
 
+if (mode === MODE.OFFLINE) badgeClass = 'status-offline';
+
 if (
-  mode === MODE.IDLE ||
   mode === MODE.GRID_READY ||
   mode === MODE.GEN_READY ||
   mode === MODE.PARALLEL
 ) badgeClass = 'status-online';
 
 if (
+  mode === MODE.IDLE ||
   mode === MODE.GRID_WARMUP ||
   mode === MODE.GEN_STARTING ||
   mode === MODE.SYNC_WINDOW ||
@@ -1004,7 +1006,6 @@ if (
 ) badgeClass = 'status-open';
 
 if (mode === MODE.TRIPPED) badgeClass = 'status-trip';
-
 this.els.systemBadge.textContent = modeLabel;
 this.els.systemBadge.className = 'badge ' + badgeClass;
       this.els.clockText.textContent = new Date().toLocaleTimeString('en-US',{hour12:false}) + '.' + String(new Date().getMilliseconds()).padStart(3,'0');
