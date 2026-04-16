@@ -1,19 +1,18 @@
-  {
-      "task": "live v9 behavior validation",
-      "status": "partial function-check pass",
-      "validated": [
-        "sync-close path",
-        "parallel state hold",
-        "load raise under parallel",
-        "explicit overcurrent trip path",
-        "SOE export"
-      ],
-      "remaining": [
-        "true cold reset",
-        "display consistency in parallel",
-        "state-aware UI control labels",
-        "docs update before promotion"
-      ],
-      "date": "2026-04-15"
-    }
+{
+  "task": "V9.1 Sprint Step 1 - deterministic reset baseline",
+  "runtime_authority": "index.html",
+  "development_authority": "phoenix_v9_dev.html",
+  "status": "passed",
+  "validated_behaviors": [
+    "startup sequence remains intact",
+    "sync window entry remains intact",
+    "breaker close into parallel remains intact",
+    "load raise remains intact",
+    "chaos toggle remains intact",
+    "full system reset logs correctly",
+    "reset does not break state-machine flow"
+  ],
+  "next_step": "Step 2 - closed-state display truth in updateUI()",
+  "date": "2026-04-16"
+}
   
