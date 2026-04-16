@@ -798,14 +798,18 @@
     s.governorDroopHz += (0 - s.governorDroopHz) * dt * 2;
   }
 
-  if(s.faults.has('PHASE-ERR') && s.breaker !== 'CLOSED') s.genAngle += 50 * dt;
+ if(s.faults.has('PHASE-ERR') && s.breaker !== 'CLOSED') s.genAngle += 50 * dt;
 
-  s.gridAngle += s.gridF * 360 * dt;
-  if(s.breaker !== 'CLOSED') s.genAngle += s.genF * 360 * dt;
+s.gridAngle += s.gridF * 360 * dt;
 
-  s.phaseDeg = this.wrapDeg(s.genAngle - s.gridAngle);
-  s.slipHz = s.genF - s.gridF;
+if(s.breaker === 'CLOSED'){
+  s.genAngle = s.gridAngle;
+} else {
+  s.genAngle += s.genF * 360 * dt;
+}
 
+s.phaseDeg = this.wrapDeg(s.genAngle - s.gridAngle);
+s.slipHz = s.breaker === 'CLOSED' ? 0 : (s.genF - s.gridF);
   const ctx = this.deriveContext();
 
   if(this.state.machine.mode === MODE.GEN_STARTING){
