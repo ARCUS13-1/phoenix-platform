@@ -605,9 +605,8 @@ applyModeDerivedState(){
       this.state.logs.slice(0,300).forEach((e, i)=>{ const div=document.createElement('div'); div.className='log-entry ' + (e.level||''); if(highlight===i) div.style.outline='1px solid var(--cyan)'; div.textContent = '['+e.ts+'] ' + e.msg; box.appendChild(div); });
     },
     startSim(){
-  if(this.state.simRunning) return;
+  if(this.state.machine.mode !== MODE.OFFLINE) return;
 
-  this.state.simRunning = true;
   this.state.gridV = 0;
   this.state.gridF = 0;
 
@@ -617,11 +616,15 @@ applyModeDerivedState(){
   this.vibrate(12);
 },
     startGrid(){
-  if(!this.state.simRunning){
+  if(this.state.machine.mode === MODE.OFFLINE){
     this.startSim();
   }
 
-  this.state.gridStarted = true;
+  if(this.state.machine.mode !== MODE.IDLE){
+    this.log('Grid start ignored. Machine not in IDLE.', 'warn');
+    return;
+  }
+
   this.dispatch(EVENT.GRID_START);
 
   this.log('Grid start sequence initiated.', 'good');
@@ -645,7 +648,6 @@ applyModeDerivedState(){
     return;
   }
 
-  this.state.genStarted = true;
   this.dispatch(EVENT.GEN_START);
   this.log('Generator prime mover started.', 'good');
   this.vibrate(12);
@@ -664,9 +666,8 @@ applyModeDerivedState(){
   this.log('Generator stop command issued.', 'warn');
 },
     togglePause(){
-  this.state.paused = !this.state.paused;
   this.dispatch(EVENT.PAUSE_TOGGLE);
-  this.log(this.state.paused ? 'Simulation paused.' : 'Simulation resumed.', 'warn');
+  this.log(this.state.machine.mode === MODE.PAUSED ? 'Simulation paused.' : 'Simulation resumed.', 'warn');
 },
     toggleChaos(){ this.state.chaos = !this.state.chaos; document.getElementById('btnChaos').textContent = this.state.chaos ? 'CHAOS ON' : 'CHAOS OFF'; this.log('Grid chaos ' + (this.state.chaos ? 'enabled' : 'disabled') + '.', this.state.chaos ? 'warn':'good'); },
     toggleAutoMatch(){ this.state.autoMatch = !this.state.autoMatch; const txt = this.state.autoMatch ? 'AUTO MATCH ON' : 'AUTO MATCH'; document.getElementById('btnAutoMatch').textContent = txt; const dock = document.getElementById('btnAutoMatchDock'); if(dock) dock.textContent = txt; this.log('Auto-match ' + (this.state.autoMatch ? 'enabled' : 'disabled') + '.', this.state.autoMatch ? 'good':'warn'); },
