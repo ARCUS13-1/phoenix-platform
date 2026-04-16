@@ -267,13 +267,13 @@
         <p class="hint">When opened from iPhone Files or offline, this runs in ghost mode and still feeds the simulator. If served from Safari with internet, it attempts a public frequency fetch and quietly falls back if blocked.</p>
       </section>
       <section class="card panel">
-        <h2>Why the old builds half-worked</h2>
-        <div class="hint">
-          1. External CDN libraries made local-file behavior brittle on iPhone. <br>
-          2. Some earlier builds had missing state transitions, so breaker close changed text but not physics. <br>
-          3. Randomized power values looked alive but were not tied to voltage, frequency, or breaker state. <br>
-          4. Files opened inside preview panes can suppress some browser behavior. Safari is safer than the document previewer.
-        </div>
+        <h2>Training Use Notes</h2>
+<div class="hint">
+  1. This overlay provides a reference grid frequency and net-load context for the simulator. In offline mode, Phoenix uses a ghost-frequency source so training still works without internet. <br>
+  2. The overlay is informational. Safe synchronizing still depends on simulator conditions: breaker status, generator readiness, ΔV, Δf, Δφ, and active faults. <br>
+  3. Use this page to compare simulated machine behavior against system context, then return to the simulator tab to execute the operating sequence. <br>
+  4. For best results on mobile, open the file in Safari or a full browser tab rather than a document preview pane.
+</div>
       </section>
     </div>
   </main>
