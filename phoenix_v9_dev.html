@@ -583,13 +583,21 @@ applyModeDerivedState(){
   }
 },
     dispatch(event){
-      const prev = this.state.machine.mode;
-      this.state.machine = transition(this.state.machine, event, this.deriveContext());
-      const next = this.state.machine.mode;
-      if(prev !== next){
-        this.log(`STATE ${prev} -> ${next}`, next === MODE.TRIPPED ? 'trip' : 'good');
-      }
-    },
+  const prev = this.state.machine.mode;
+  const ctxBefore = this.deriveContext();
+
+  this.state.machine = transition(this.state.machine, event, ctxBefore);
+  this.applyModeDerivedState();
+
+  const next = this.state.machine.mode;
+
+  if (prev !== next) {
+    this.log(
+      `STATE ${prev} -> ${next} on ${event} | ΔV ${ctxBefore.dv.toFixed(0)} V | Δf ${ctxBefore.df.toFixed(3)} Hz | Δφ ${ctxBefore.dphi.toFixed(1)}°`,
+      next === MODE.TRIPPED ? 'trip' : 'good'
+    );
+  }
+},
     vibrate(pattern){ try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){} },
     log(msg, level=''){ const now = new Date(); const ts = now.toLocaleTimeString('en-US',{hour12:false}) + '.' + String(now.getMilliseconds()).padStart(3,'0'); const entry = {ts,msg,level}; this.state.logs.unshift(entry); this.renderLogs(); },
     renderLogs(highlight){
