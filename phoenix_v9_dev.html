@@ -515,7 +515,73 @@
         syncSafe
       };
     },
+applyModeDerivedState(){
+  const s = this.state;
+  const mode = s.machine.mode;
 
+  // paused is special: preserve everything else, only flip pause flag
+  if (mode === MODE.PAUSED) {
+    s.paused = true;
+    s.simRunning = true;
+    return;
+  }
+
+  s.paused = false;
+
+  switch (mode) {
+    case MODE.OFFLINE:
+      s.simRunning = false;
+      s.gridStarted = false;
+      s.gridHealthy = false;
+      s.genStarted = false;
+      break;
+
+    case MODE.IDLE:
+      s.simRunning = true;
+      s.gridStarted = false;
+      s.gridHealthy = false;
+      s.genStarted = false;
+      break;
+
+    case MODE.GRID_WARMUP:
+      s.simRunning = true;
+      s.gridStarted = true;
+      s.gridHealthy = false;
+      s.genStarted = false;
+      break;
+
+    case MODE.GRID_READY:
+      s.simRunning = true;
+      s.gridStarted = true;
+      s.gridHealthy = true;
+      s.genStarted = false;
+      break;
+
+    case MODE.GEN_STARTING:
+    case MODE.GEN_READY:
+    case MODE.SYNC_WINDOW:
+    case MODE.BREAKER_CLOSING:
+      s.simRunning = true;
+      s.gridStarted = true;
+      s.gridHealthy = true;
+      s.genStarted = true;
+      break;
+
+    case MODE.PARALLEL:
+      s.simRunning = true;
+      s.gridStarted = true;
+      s.gridHealthy = true;
+      s.genStarted = true;
+      s.breaker = 'CLOSED';
+      break;
+
+    case MODE.TRIPPED:
+      s.simRunning = true;
+      s.breaker = 'TRIPPED';
+      // preserve existing grid/gen status so trip context is not erased
+      break;
+  }
+},
     dispatch(event){
       const prev = this.state.machine.mode;
       this.state.machine = transition(this.state.machine, event, this.deriveContext());
