@@ -332,41 +332,69 @@
       previousMode: MODE.OFFLINE
     };
   }
+  
+function createInitialState() {
+  return {
+    machine: createMachine(),
+    simRunning: false,
+    paused: false,
+    gridStarted: false,
+    gridHealthy: false,
+    genStarted: false,
+    breaker: 'OPEN',
 
+    gridV: 0,
+    gridF: 0,
+    gridAngle: 0,
+
+    genV: 0,
+    genF: 0,
+    genAngle: 0,
+
+    govSet: 60.00,
+    avrSet: 13.80,
+    phaseDeg: 0,
+    slipHz: 0,
+
+    chaos: false,
+    autoMatch: false,
+    faults: new Set(),
+
+    currentA: 0,
+    pKW: 0,
+    qMVAr: 0,
+    sKVA: 0,
+    pf: 1,
+    loadDemandKW: 4200,
+    governorDroopHz: 0,
+    genTempC: 25,
+
+    teleMode: 'Demo',
+    telemetryFreq: 60.00,
+    telemetryLoad: '—',
+    telemetryUpdated: '—',
+
+    clockStart: performance.now(),
+    lastTick: performance.now(),
+    replayTimer: null,
+
+    brkrClosingTimer: 0,
+    postCloseHold: 0,
+
+    history: [],
+    logs: []
+  };
+}
+  
   function machineResetState(prev) {
-    return {
-      ...prev,
-      simRunning: false,
-      paused: false,
-      gridStarted: false,
-      gridHealthy: false,
-      genStarted: false,
-      breaker: 'OPEN',
-      gridV: 0,
-      gridF: 0,
-      gridAngle: 0,
-      genV: 0,
-      genF: 0,
-      genAngle: 0,
-      phaseDeg: 0,
-      slipHz: 0,
-      currentA: 0,
-      pKW: 0,
-      qMVAr: 0,
-      sKVA: 0,
-      pf: 1,
-      loadDemandKW: 4200,
-      governorDroopHz: 0,
-      genTempC: 25,
-      chaos: false,
-      autoMatch: false,
-      faults: new Set(),
-      brkrClosingTimer: 0,
-      postCloseHold: 0,
-      history: [],
-      machine: createMachine()
-    };
-  }
+  const next = createInitialState();
+
+  return {
+    ...next,
+    logs: prev?.logs || [],
+    replayTimer: prev?.replayTimer || null
+  };
+}
 
   function transition(machine, event, ctx) {
     const mode = machine.mode;
@@ -434,29 +462,18 @@
     }
   }
   const app = {
-    state: {
-      machine:createMachine(),
-      simRunning:false, paused:false,
-      gridStarted:false, gridHealthy:false,
-      genStarted:false, breaker:'OPEN',
-      gridV:0, gridF:0, gridAngle:0,
-      genV:0, genF:0, genAngle:0,
-      govSet:60.00, avrSet:13.80,
-      phaseDeg:0, slipHz:0,
-      chaos:false, autoMatch:false,
-      faults:new Set(),
-      currentA:0, pKW:0, qMVAr:0, sKVA:0, pf:1, loadDemandKW:4200, governorDroopHz:0, genTempC:25,
-      teleMode:'Demo', telemetryFreq:60.00, telemetryLoad:'—', telemetryUpdated:'—',
-      clockStart:performance.now(), lastTick:performance.now(), replayTimer:null,
-      brkrClosingTimer:0, postCloseHold:0,
-      history:[], logs:[]
-    },
-    tabs:['sim','analysis','timing','telemetry'],
-    els:{},
-    init(){
-      this.cache(); this.buildTabs(); this.bind(); this.applyPreset('sync'); this.refreshTelemetry(); this.log('Phoenix mobile core initialized.', 'good');
-      requestAnimationFrame(this.tick.bind(this));
-    },
+  state: createInitialState(),
+  tabs:['sim','analysis','timing','telemetry'],
+  els:{},
+  init(){
+    this.cache();
+    this.buildTabs();
+    this.bind();
+    this.applyPreset('sync');
+    this.refreshTelemetry();
+    this.log('Phoenix mobile core initialized.', 'good');
+    requestAnimationFrame(this.tick.bind(this));
+  },
     cache(){
       const ids = ['systemBadge','gridBrief','gridSub','genBrief','genSub','breakerBrief','syncSub','powerBrief','currentSub','govSlider','avrSlider','govRead','avrRead','scope','trend','gridStateText','genStateText','breakerInline','leftFlow','rightFlow','kvSlip','kvPhase','kvQ','kvS','kvDV','kvDfAbs','kvDpAbs','kvTemp','syncBandMarker','syncLamp','syncReadyPill','syncReason','log','clockText','timingInput','timingView','timingPreset','teleMode','teleSource','teleFreq','teleLoad','teleUpdated'];
       ids.forEach(id=>this.els[id]=document.getElementById(id));
