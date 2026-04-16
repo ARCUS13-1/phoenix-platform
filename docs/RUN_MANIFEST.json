@@ -50,3 +50,102 @@
   "next_method": "startSim",
   "as_of": "2026-04-14"
 }
+{
+  "latest": {
+    "task": "v9 dev sandbox validation after state-machine integration and live sync/load/fault testing",
+    "runtime_authority": "index.html",
+    "development_authority": "phoenix_v9_dev.html",
+    "status": "v9 sandbox validated for sync-close-parallel-load and explicit overcurrent trip",
+    "validated_behaviors": [
+      "SIM START transitions OFFLINE -> IDLE",
+      "GRID START transitions IDLE -> GRID_WARMUP -> GRID_READY",
+      "GEN START transitions GRID_READY -> GEN_STARTING -> GEN_READY",
+      "SYNC window can be reached with auto-match",
+      "Breaker closes through SYNC_WINDOW -> BREAKER_CLOSING -> PARALLEL",
+      "Load raise works while paralleled",
+      "Explicit OVERCURRENT injection trips PARALLEL -> TRIPPED",
+      "SOE export and replay path active"
+    ],
+    "remaining_issues": [
+      "resetAll is not yet a fully deterministic cold reset",
+      "closed-state displayed frequencies can still visually diverge from zero-slip indication",
+      "breaker action button labels are not yet fully state-aware",
+      "docs and manifests need to be updated before promotion"
+    ],
+    "next_priorities": [
+      "createInitialState() and hard reset path",
+      "closed-state display consistency",
+      "state-aware breaker button labels",
+      "machine-state badge",
+      "trip summary panel",
+      "docs + manifest update"
+    ],
+    "promotion_ready": false,
+    "date": "2026-04-15"
+  },
+  "history": [
+    {
+      "task": "repo review for index.html and phoenix_v9_dev.html with next-phase mapping",
+      "runtime_authority": "index.html",
+      "development_authority": "phoenix_v9_dev.html",
+      "v9_state_machine_scaffold": true,
+      "v9_machine_driven_behavior": false,
+      "top_issue": "resetAll still used old spread-reset pattern",
+      "next_phase": [
+        "operator-control rewiring",
+        "physics event hooks"
+      ],
+      "promotion_ready": false,
+      "date": "2026-04-14"
+    },
+    {
+      "task": "phase 4 operator-control rewiring",
+      "status": "completed in phoenix_v9_dev.html",
+      "completed_methods": [
+        "startSim",
+        "startGrid",
+        "startGen",
+        "stopGen",
+        "togglePause",
+        "resetAll",
+        "resetBreaker",
+        "toggleBreakerCommand",
+        "tripBreaker",
+        "injectFault",
+        "clearFaults"
+      ],
+      "result": "operator actions now route through dispatch(EVENT...) and machine transitions log correctly",
+      "date": "2026-04-15"
+    },
+    {
+      "task": "phase 5 physics event hooks",
+      "status": "completed in phoenix_v9_dev.html",
+      "completed_areas": [
+        "GRID_HEALTHY event dispatch",
+        "SYNC_READY / SYNC_LOST event dispatch",
+        "BREAKER_CLOSE_CONFIRMED event dispatch",
+        "post-close angle/slip correction"
+      ],
+      "result": "false immediate post-close protection trip removed and parallel operation stabilized",
+      "date": "2026-04-15"
+    },
+    {
+      "task": "live v9 behavior validation",
+      "status": "partial function-check pass",
+      "validated": [
+        "sync-close path",
+        "parallel state hold",
+        "load raise under parallel",
+        "explicit overcurrent trip path",
+        "SOE export"
+      ],
+      "remaining": [
+        "true cold reset",
+        "display consistency in parallel",
+        "state-aware UI control labels",
+        "docs update before promotion"
+      ],
+      "date": "2026-04-15"
+    }
+  ]
+}
