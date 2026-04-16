@@ -696,7 +696,6 @@ applyModeDerivedState(){
     resetAll(){
   clearTimeout(this.state.replayTimer);
   this.state = machineResetState(this.state);
-  this.applyModeDerivedState();
 
   document.getElementById('btnChaos').textContent = 'CHAOS OFF';
   document.getElementById('btnAutoMatch').textContent = 'AUTO MATCH';
