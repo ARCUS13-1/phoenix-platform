@@ -1,18 +1,6 @@
 {
   "task": "V9.1 Sprint Step 1 - deterministic reset baseline",
-  "runtime_authority": "index.html",
-  "development_authority": "phoenix_v9_dev.html",
+  ...
   "status": "passed",
-  "validated_behaviors": [
-    "startup sequence remains intact",
-    "sync window entry remains intact",
-    "breaker close into parallel remains intact",
-    "load raise remains intact",
-    "chaos toggle remains intact",
-    "full system reset logs correctly",
-    "reset does not break state-machine flow"
-  ],
-  "next_step": "Step 2 - closed-state display truth in updateUI()",
-  "date": "2026-04-16"
+  "next_step": "Step 2 - closed-state display truth in updateUI()"
 }
-  
