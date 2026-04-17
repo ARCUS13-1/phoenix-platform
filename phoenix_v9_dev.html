@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Phoenix Engineering Platform v9 - dev</title>
+  <title>PHOENIX ENGINEERING PLATFORM v9.5 — Operator Training Platform</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <style>
     :root{
@@ -70,7 +70,6 @@
     .timing{overflow:auto;background:#fff;border-radius:12px;padding:10px;color:#111}
     .timing svg{display:block;min-width:560px;width:100%;height:auto}
     .footer{padding:8px 12px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;align-items:center}
-
     .sync-indicators{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
     .sync-band{position:relative;margin-top:10px;height:14px;border-radius:999px;border:1px solid var(--line);background:linear-gradient(90deg,#112034,#0f1b2c)}
     .sync-band .zone{position:absolute;top:1px;bottom:1px;left:46%;width:8%;border-radius:999px;background:rgba(49,210,138,.18);box-shadow:0 0 18px rgba(49,210,138,.18)}
@@ -84,7 +83,10 @@
     .sync-pill.wait{color:var(--gold);border-color:rgba(246,196,83,.4)}
     .sync-pill.trip{color:var(--red);border-color:rgba(255,107,107,.45)}
     .scope-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-
+    .guidance{font-size:13px;font-weight:700;color:var(--cyan);padding:12px;border:1px solid rgba(89,215,255,.3);border-radius:12px;background:rgba(89,215,255,.08);box-shadow:0 0 12px rgba(89,215,255,.2)}
+    .scenario-row{display:flex;gap:8px;align-items:center;margin-top:8px}
+    .debrief{background:rgba(49,210,138,.1);border:1px solid rgba(49,210,138,.4);border-radius:12px;padding:12px;margin-top:8px;font-size:13px;line-height:1.45}
+    .mode-badge{padding:4px 10px;border-radius:999px;font-size:10px;font-weight:700}
     @media (min-width:900px){
       .view.active .desktop-two{display:grid;grid-template-columns:420px 1fr;gap:12px;align-items:start}
       .view.active .desktop-three{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
@@ -97,9 +99,10 @@
     <div class="title">
       <div>
         <h1>PHOENIX ENGINEERING PLATFORM</h1>
-        <div class="subtitle">Integrated grid ↔ generator synchronizing, faults, SOE, timing logic, analysis, mobile-safe single file</div>
+        <div class="subtitle">v9.5 — Operator Training Platform • Portable grid synchronizing simulator</div>
       </div>
       <div id="systemBadge" class="badge status-offline">OFFLINE</div>
+      <div id="trainingModeBadge" class="mode-badge">FREE RUN</div>
     </div>
   </header>
 
@@ -124,16 +127,38 @@
             <button class="btn" id="btnGenStop">GEN STOP</button>
             <button class="btn purple" id="btnPause">PAUSE</button>
             <button class="btn" id="btnReset">RESET</button>
-            <button class="btn primary" id="btnToggleBreaker">SYNC CLOSE</button>
+            <button class="btn primary" id="btnToggleBreaker">TOGGLE BRKR</button>
             <button class="btn danger" id="btnTrip">BRKR TRIP</button>
-            <button class="btn" id="btnResetBreaker">RESET BREAKER</button>
+            <button class="btn" id="btnResetBreaker">BRKR RESET</button>
             <button class="btn" id="btnAutoMatch">AUTO MATCH</button>
             <button class="btn" id="btnChaos">CHAOS OFF</button>
             <button class="btn" id="btnExport">DOWNLOAD LOGS</button>
           </div>
+          <div class="scenario-row">
+            <select id="scenarioSelect" class="field">
+              <option value="quickstart">QUICKSTART — Clean Sync Drill</option>
+              <option value="vsag">V-SAG CHALLENGE — Voltage fault training</option>
+              <option value="phaseerr">PHASE-ERR DRILL — Angle slip training</option>
+              <option value="overcurrent">OVERCURRENT DRILL — High-load trip training</option>
+              <option value="stuck">BRKR-STUCK DRILL — Mechanical fault recovery</option>
+              <option value="combined">COMBINED FAULT DRILL — Multi-fault scenario</option>
+            </select>
+            <button class="btn primary" id="btnLoadScenario">START DRILL</button>
+          </div>
           <p class="hint" style="margin-top:10px">
-  Sequence: SIM START → GRID START → wait for Grid Healthy → GEN START → tune governor and AVR or use AUTO MATCH → close near 12 o’clock when within the sync window. Unsafe synchronizing or active faults will trip the breaker.
-</p>
+            Sequence: SIM START → GRID START → GEN START → tune or AUTO MATCH → close at 12 o’clock.<br>
+            <strong>Operator Guidance Panel below will tell you the exact next action and why.</strong>
+          </p>
+        </section>
+
+        <section class="card panel">
+          <h2>OPERATOR GUIDANCE • NEXT ACTION</h2>
+          <div id="guidancePanel" class="guidance">Waiting for simulation start…</div>
+        </section>
+
+        <section class="card panel" id="debriefPanel" style="display:none">
+          <h2>MISSION DEBRIEF</h2>
+          <div id="debriefContent" class="debrief"></div>
         </section>
 
         <section class="card panel">
@@ -185,8 +210,9 @@
             <div class="tiny"><div class="k">Temp</div><div id="kvTemp" class="v">25.0 °C</div></div>
           </div>
           <div class="hint">
-  Clockwise needle means the generator is fast. Close just before 12 o’clock to account for breaker closing time. The sync lamp brightens as conditions move into the close window to improve visibility on smaller screens.
-</div>
+            Clockwise needle means the generator is fast. Close just before 12 o’clock.<br>
+            <span id="syncHintLive" style="color:var(--gold);font-weight:700"></span>
+          </div>
           <div class="sync-dock">
             <div class="dock-top">
               <div id="syncReadyPill" class="sync-pill wait">NOT READY</div>
@@ -220,7 +246,7 @@
       <section class="card panel">
         <h2>Live Trend</h2>
         <canvas id="trend" width="900" height="200"></canvas>
-        <div class="hint">5 Hz trend, capped for mobile. Tracks grid Hz, gen Hz, current, and kW. Because apparently phones deserve mercy.</div>
+        <div class="hint">5 Hz trend, capped for mobile. Tracks grid Hz, gen Hz, current, and kW.</div>
       </section>
       <section class="card panel">
         <h2>Sequence of Events</h2>
@@ -247,7 +273,7 @@
           <button class="btn" id="btnRenderTiming">Render</button>
         </div>
         <textarea id="timingInput"></textarea>
-        <p class="hint">Format: one lane per line. Example: GRID:111100001111. Use 1, 0, or . to hold the previous state. The timing renderer is self-contained for reliable local and offline use.</p>
+        <p class="hint">Format: one lane per line. Example: GRID:111100001111. Use 1, 0, or . to hold the previous state.</p>
       </section>
       <section class="card panel">
         <h2>Timing Diagram</h2>
@@ -268,25 +294,25 @@
           <div class="tiny"><div class="k">Updated</div><div id="teleUpdated" class="v">—</div></div>
         </div>
         <button class="btn" id="btnRefreshTelemetry" style="margin-top:10px">Refresh Overlay</button>
-        <p class="hint">When opened offline or from a local file, Phoenix uses ghost-frequency mode so training remains available without internet access. In a browser with connectivity, the overlay can attempt a public frequency fetch and will fall back automatically if unavailable.</p>
+        <p class="hint">When opened offline or from a local file, Phoenix uses ghost-frequency mode so training remains available without internet access.</p>
       </section>
       <section class="card panel">
         <h2>Training Use Notes</h2>
-<div class="hint">
-  1. This overlay provides a reference grid frequency and net-load context for the simulator. In offline mode, Phoenix uses a ghost-frequency source so training still works without internet. <br>
-  2. The overlay is informational. Safe synchronizing still depends on simulator conditions: breaker status, generator readiness, ΔV, Δf, Δφ, and active faults. <br>
-  3. Use this page to compare simulated machine behavior against system context, then return to the simulator tab to execute the operating sequence. <br>
-  4. For best results on mobile, open the file in Safari or a full browser tab rather than a document preview pane.
-</div>
+        <div class="hint">
+          1. This overlay provides a reference grid frequency and net-load context for the simulator.<br>
+          2. The overlay is informational. Safe synchronizing still depends on simulator conditions.<br>
+          3. Use this page to compare simulated machine behavior against system context.
+        </div>
       </section>
     </div>
   </main>
 
   <footer class="footer">
-    <span>Phoenix Engineering Platform © 2026 · v9-dev</span>
+    <span>Phoenix Engineering Platform © 2026 · v9.5 — Operator Training Platform</span>
     <span id="clockText">--:--:--.---</span>
   </footer>
 </div>
+
 <script>
 (function(){
   const presets = {
@@ -294,187 +320,172 @@
     trip: `CMD :000011111100\n52A :111111000000\nTRIP:000000111111\n86  :000000001111`,
     fault:`FAULT:000001111100\n50/51:000000111100\nTRIP :000000011110\nLOCK :000000000111`
   };
-    const MODE = Object.freeze({
-    OFFLINE: 'OFFLINE',
-    IDLE: 'IDLE',
-    GRID_WARMUP: 'GRID_WARMUP',
-    GRID_READY: 'GRID_READY',
-    GEN_STARTING: 'GEN_STARTING',
-    GEN_READY: 'GEN_READY',
-    SYNC_WINDOW: 'SYNC_WINDOW',
-    BREAKER_CLOSING: 'BREAKER_CLOSING',
-    PARALLEL: 'PARALLEL',
-    TRIPPED: 'TRIPPED',
-    PAUSED: 'PAUSED'
+
+  const MODE = Object.freeze({
+    OFFLINE: 'OFFLINE', IDLE: 'IDLE', GRID_WARMUP: 'GRID_WARMUP', GRID_READY: 'GRID_READY',
+    GEN_STARTING: 'GEN_STARTING', GEN_READY: 'GEN_READY', SYNC_WINDOW: 'SYNC_WINDOW',
+    BREAKER_CLOSING: 'BREAKER_CLOSING', PARALLEL: 'PARALLEL', TRIPPED: 'TRIPPED', PAUSED: 'PAUSED'
   });
 
   const EVENT = Object.freeze({
-    SIM_START: 'SIM_START',
-    GRID_START: 'GRID_START',
-    GRID_HEALTHY: 'GRID_HEALTHY',
-    GEN_START: 'GEN_START',
-    GEN_STOP: 'GEN_STOP',
-    PAUSE_TOGGLE: 'PAUSE_TOGGLE',
-    RESET: 'RESET',
-    BREAKER_CLOSE_CMD: 'BREAKER_CLOSE_CMD',
-    BREAKER_CLOSE_CONFIRMED: 'BREAKER_CLOSE_CONFIRMED',
-    BREAKER_OPEN_CMD: 'BREAKER_OPEN_CMD',
-    PROTECTION_TRIP: 'PROTECTION_TRIP',
-    FAULT_INJECTED: 'FAULT_INJECTED',
-    FAULT_CLEARED: 'FAULT_CLEARED',
-    SYNC_READY: 'SYNC_READY',
-    SYNC_LOST: 'SYNC_LOST'
+    SIM_START: 'SIM_START', GRID_START: 'GRID_START', GRID_HEALTHY: 'GRID_HEALTHY',
+    GEN_START: 'GEN_START', GEN_STOP: 'GEN_STOP', PAUSE_TOGGLE: 'PAUSE_TOGGLE',
+    RESET: 'RESET', BREAKER_CLOSE_CMD: 'BREAKER_CLOSE_CMD',
+    BREAKER_CLOSE_CONFIRMED: 'BREAKER_CLOSE_CONFIRMED', BREAKER_OPEN_CMD: 'BREAKER_OPEN_CMD',
+    PROTECTION_TRIP: 'PROTECTION_TRIP', FAULT_INJECTED: 'FAULT_INJECTED',
+    FAULT_CLEARED: 'FAULT_CLEARED', SYNC_READY: 'SYNC_READY', SYNC_LOST: 'SYNC_LOST'
   });
 
+  // SCENARIO DEFINITION MAP — objective-specific truth
+  const SCENARIOS = {
+    quickstart: {
+      objective: 'Execute a clean sync with no faults or unsafe attempts',
+      successCondition: (s) => s.breaker === 'CLOSED' && s.scenario.unsafeAttempts === 0 && s.scenario.trips === 0,
+      failureCondition: (s) => s.scenario.trips > 0,
+      scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, cleanState: true },
+      debriefTemplate: (score, s) => `Clean sync achieved in ${s.syncTime.toFixed(1)} s. No faults injected. Excellent procedural discipline.`
+    },
+    vsag: {
+      objective: 'Handle V-SAG fault and still achieve safe sync',
+      successCondition: (s) => s.breaker === 'CLOSED' && s.faults.has('V-SAG') && s.genV > 13.0,
+      failureCondition: (s) => s.scenario.trips > 0,
+      scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, faultRecovery: true },
+      debriefTemplate: (score, s) => `V-SAG managed and safe sync completed. Good AVR response.`
+    },
+    phaseerr: {
+      objective: 'Recover from PHASE-ERR and close only when safe',
+      successCondition: (s) => s.breaker === 'CLOSED' && s.faults.has('PHASE-ERR') && Math.abs(s.phaseDeg) < 3,
+      failureCondition: (s) => s.scenario.trips > 0,
+      scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, faultRecovery: true },
+      debriefTemplate: (score, s) => `PHASE-ERR recovered. Safe sync completed after angle stabilization.`
+    },
+    overcurrent: {
+      objective: 'Manage OVERCURRENT while synchronizing and avoid trip',
+      successCondition: (s) => s.breaker === 'CLOSED' && s.faults.has('OVERCURRENT') && s.currentA < 1400,
+      failureCondition: (s) => s.scenario.trips > 0,
+      scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, faultRecovery: true },
+      debriefTemplate: (score, s) => `OVERCURRENT managed without trip. Excellent load and protection awareness.`
+    },
+    stuck: {
+      objective: 'Recover from BRKR-STUCK fault and complete safe sync',
+      successCondition: (s) => s.breaker === 'CLOSED' && s.faults.has('BRKR-STUCK'),
+      failureCondition: (s) => s.scenario.trips > 0,
+      scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, faultRecovery: true },
+      debriefTemplate: (score, s) => `BRKR-STUCK recognized and recovered. Safe sync completed.`
+    },
+    combined: {
+      objective: 'Handle simultaneous V-SAG and PHASE-ERR faults',
+      successCondition: (s) => s.breaker === 'CLOSED' && s.faults.has('V-SAG') && s.faults.has('PHASE-ERR') && Math.abs(s.phaseDeg) < 4,
+      failureCondition: (s) => s.scenario.trips > 0,
+      scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, faultRecovery: true },
+      debriefTemplate: (score, s) => `Combined faults managed. Safe sync completed under stress.`
+    }
+  };
+
   function createMachine() {
+    return { mode: MODE.OFFLINE, previousMode: MODE.OFFLINE };
+  }
+
+  function createInitialState() {
     return {
-      mode: MODE.OFFLINE,
-      previousMode: MODE.OFFLINE
+      machine: createMachine(),
+      simRunning: false, paused: false, gridStarted: false, gridHealthy: false, genStarted: false, breaker: 'OPEN',
+      gridV: 0, gridF: 0, gridAngle: 0,
+      genV: 0, genF: 0, genAngle: 0,
+      govSet: 60.00, avrSet: 13.80, phaseDeg: 0, slipHz: 0,
+      chaos: false, autoMatch: false, faults: new Set(),
+      currentA: 0, pKW: 0, qMVAr: 0, sKVA: 0, pf: 1, loadDemandKW: 4200,
+      governorDroopHz: 0, genTempC: 25,
+      teleMode: 'Demo', telemetryFreq: 60.00, telemetryLoad: '—', telemetryUpdated: '—',
+      clockStart: performance.now(), lastTick: performance.now(), replayTimer: null,
+      brkrClosingTimer: 0, postCloseHold: 0,
+      history: [], logs: [],
+      scenario: null,
+      lastScore: 0,
+      bestScore: {},
+      trainingMode: 'FREE RUN'
     };
   }
-  
-function createInitialState() {
-  return {
-    machine: createMachine(),
-    simRunning: false,
-    paused: false,
-    gridStarted: false,
-    gridHealthy: false,
-    genStarted: false,
-    breaker: 'OPEN',
 
-    gridV: 0,
-    gridF: 0,
-    gridAngle: 0,
-
-    genV: 0,
-    genF: 0,
-    genAngle: 0,
-
-    govSet: 60.00,
-    avrSet: 13.80,
-    phaseDeg: 0,
-    slipHz: 0,
-
-    chaos: false,
-    autoMatch: false,
-    faults: new Set(),
-
-    currentA: 0,
-    pKW: 0,
-    qMVAr: 0,
-    sKVA: 0,
-    pf: 1,
-    loadDemandKW: 4200,
-    governorDroopHz: 0,
-    genTempC: 25,
-
-    teleMode: 'Demo',
-    telemetryFreq: 60.00,
-    telemetryLoad: '—',
-    telemetryUpdated: '—',
-
-    clockStart: performance.now(),
-    lastTick: performance.now(),
-    replayTimer: null,
-
-    brkrClosingTimer: 0,
-    postCloseHold: 0,
-
-    history: [],
-    logs: []
-  };
-}
-  
   function machineResetState(prev) {
-  const next = createInitialState();
-
-  return {
-    ...next,
-    logs: prev?.logs || []
-  };
-}
+    const next = createInitialState();
+    return { ...next, logs: prev?.logs || [], lastScore: prev?.lastScore || 0, bestScore: prev?.bestScore || {} };
+  }
 
   function transition(machine, event, ctx) {
     const mode = machine.mode;
-
     switch (mode) {
-      case MODE.OFFLINE:
-        if (event === EVENT.SIM_START) return { ...machine, mode: MODE.IDLE };
-        return machine;
-
+      case MODE.OFFLINE: if (event === EVENT.SIM_START) return { ...machine, mode: MODE.IDLE }; return machine;
       case MODE.IDLE:
         if (event === EVENT.GRID_START) return { ...machine, mode: MODE.GRID_WARMUP };
         if (event === EVENT.PAUSE_TOGGLE) return { ...machine, previousMode: mode, mode: MODE.PAUSED };
         if (event === EVENT.RESET) return createMachine();
         return machine;
-
       case MODE.GRID_WARMUP:
         if (event === EVENT.GRID_HEALTHY) return { ...machine, mode: MODE.GRID_READY };
         if (event === EVENT.PAUSE_TOGGLE) return { ...machine, previousMode: mode, mode: MODE.PAUSED };
         if (event === EVENT.RESET) return createMachine();
         return machine;
-
       case MODE.GRID_READY:
         if (event === EVENT.GEN_START) return { ...machine, mode: MODE.GEN_STARTING };
         if (event === EVENT.PAUSE_TOGGLE) return { ...machine, previousMode: mode, mode: MODE.PAUSED };
         if (event === EVENT.RESET) return createMachine();
         return machine;
-
       case MODE.GEN_STARTING:
       case MODE.GEN_READY:
-        if (ctx.syncSafe) return { ...machine, mode: MODE.SYNC_WINDOW };
+        // Once the generator has come online it stays in GEN_READY until an explicit SYNC_READY event
+        // moves it to the SYNC_WINDOW. SYNC_LOST events will revert it back to GEN_READY.
+        if (event === EVENT.SYNC_READY) return { ...machine, mode: MODE.SYNC_WINDOW };
+        if (event === EVENT.SYNC_LOST) return { ...machine, mode: MODE.GEN_READY };
         if (event === EVENT.GEN_STOP) return { ...machine, mode: MODE.GRID_READY };
         if (event === EVENT.PROTECTION_TRIP) return { ...machine, mode: MODE.TRIPPED };
         if (event === EVENT.PAUSE_TOGGLE) return { ...machine, previousMode: mode, mode: MODE.PAUSED };
+        // remain in GEN_READY by default once generator is started
         return { ...machine, mode: MODE.GEN_READY };
-
       case MODE.SYNC_WINDOW:
+        // Leaving the sync window should only occur on an explicit SYNC_LOST event rather than
+        // continuously checking ctx.syncSafe here. This prevents oscillation and centralizes
+        // sync state logic in the event dispatch loop.
+        if (event === EVENT.SYNC_LOST) return { ...machine, mode: MODE.GEN_READY };
         if (event === EVENT.BREAKER_CLOSE_CMD && ctx.syncSafe) return { ...machine, mode: MODE.BREAKER_CLOSING };
-        if (!ctx.syncSafe || event === EVENT.SYNC_LOST) return { ...machine, mode: MODE.GEN_READY };
         if (event === EVENT.GEN_STOP) return { ...machine, mode: MODE.GRID_READY };
         if (event === EVENT.PROTECTION_TRIP) return { ...machine, mode: MODE.TRIPPED };
         return machine;
-
       case MODE.BREAKER_CLOSING:
         if (event === EVENT.BREAKER_CLOSE_CONFIRMED) return { ...machine, mode: MODE.PARALLEL };
         if (event === EVENT.PROTECTION_TRIP) return { ...machine, mode: MODE.TRIPPED };
         return machine;
-
       case MODE.PARALLEL:
         if (event === EVENT.BREAKER_OPEN_CMD) return { ...machine, mode: MODE.GEN_READY };
         if (event === EVENT.PROTECTION_TRIP) return { ...machine, mode: MODE.TRIPPED };
         if (event === EVENT.GEN_STOP) return { ...machine, mode: MODE.TRIPPED };
         return machine;
-
       case MODE.TRIPPED:
         if (event === EVENT.RESET) return { ...machine, mode: MODE.IDLE };
         return machine;
-
       case MODE.PAUSED:
         if (event === EVENT.PAUSE_TOGGLE) return { ...machine, mode: machine.previousMode || MODE.IDLE };
         if (event === EVENT.RESET) return createMachine();
         return machine;
-
-      default:
-        return machine;
+      default: return machine;
     }
   }
+
   const app = {
-  state: createInitialState(),
-  tabs:['sim','analysis','timing','telemetry'],
-  els:{},
-  init(){
-    this.cache();
-    this.buildTabs();
-    this.bind();
-    this.applyPreset('sync');
-    this.refreshTelemetry();
-    this.log('Phoenix mobile core initialized.', 'good');
-    requestAnimationFrame(this.tick.bind(this));
-  },
+    state: createInitialState(),
+    tabs:['sim','analysis','timing','telemetry'],
+    els:{},
+    init(){
+      this.cache();
+      this.buildTabs();
+      this.bind();
+      this.applyPreset('sync');
+      this.refreshTelemetry();
+      this.log('Phoenix v9.5 Operator Training Platform initialized.', 'good');
+      requestAnimationFrame(this.tick.bind(this));
+    },
     cache(){
-      const ids = ['systemBadge','gridBrief','gridSub','genBrief','genSub','breakerBrief','syncSub','powerBrief','currentSub','govSlider','avrSlider','govRead','avrRead','scope','trend','gridStateText','genStateText','breakerInline','leftFlow','rightFlow','kvSlip','kvPhase','kvQ','kvS','kvDV','kvDfAbs','kvDpAbs','kvTemp','syncBandMarker','syncLamp','syncReadyPill','syncReason','log','clockText','timingInput','timingView','timingPreset','teleMode','teleSource','teleFreq','teleLoad','teleUpdated'];
+      const ids = ['systemBadge','gridBrief','gridSub','genBrief','genSub','breakerBrief','syncSub','powerBrief','currentSub','govSlider','avrSlider','govRead','avrRead','scope','trend','gridStateText','genStateText','breakerInline','leftFlow','rightFlow','kvSlip','kvPhase','kvQ','kvS','kvDV','kvDfAbs','kvDpAbs','kvTemp','syncBandMarker','syncLamp','syncReadyPill','syncReason','log','clockText','timingInput','timingView','timingPreset','teleMode','teleSource','teleFreq','teleLoad','teleUpdated','guidancePanel','scenarioSelect','btnLoadScenario','debriefPanel','debriefContent','trainingModeBadge'];
       ids.forEach(id=>this.els[id]=document.getElementById(id));
       this.scopeCtx = this.els.scope.getContext('2d');
       this.trendCtx = this.els.trend.getContext('2d');
@@ -502,479 +513,471 @@ function createInitialState() {
       on('btnPause', ()=>this.togglePause()); on('btnReset', ()=>this.resetAll()); on('btnToggleBreaker', ()=>this.toggleBreakerCommand()); on('btnToggleBreakerDock', ()=>this.toggleBreakerCommand()); on('btnTrip', ()=>this.tripBreaker('Manual trip command'));
       on('btnResetBreaker', ()=>this.resetBreaker()); on('btnAutoMatch', ()=>this.toggleAutoMatch()); on('btnAutoMatchDock', ()=>this.toggleAutoMatch()); on('btnRaiseLoad', ()=>this.raiseLoad()); on('btnChaos', ()=>this.toggleChaos()); on('btnExport', ()=>this.exportLogs());
       on('btnClearFaults', ()=>this.clearFaults()); on('btnReplay', ()=>this.replayLogs()); on('btnClearLog', ()=>this.clearLogs()); on('btnLoadPreset', ()=>this.applyPreset(this.els.timingPreset.value)); on('btnRenderTiming', ()=>this.renderTiming()); on('btnRefreshTelemetry', ()=>this.refreshTelemetry());
+      on('btnLoadScenario', ()=>this.loadScenario());
       this.els.govSlider.addEventListener('input', e=>{ this.state.govSet = parseFloat(e.target.value); this.els.govRead.textContent = this.state.govSet.toFixed(2)+' Hz'; });
       this.els.avrSlider.addEventListener('input', e=>{ this.state.avrSet = parseFloat(e.target.value); this.els.avrRead.textContent = this.state.avrSet.toFixed(2)+' kV'; });
       document.querySelectorAll('[data-fault]').forEach(b=>b.addEventListener('click', ()=>this.injectFault(b.dataset.fault)));
     },
 
-        deriveContext(){
+    deriveContext(){
       const s = this.state;
       const dv = Math.abs(s.genV - s.gridV) * 1000;
       const df = Math.abs(s.genF - s.gridF);
       const dphi = Math.abs(this.wrapDeg(s.phaseDeg));
       const syncSafe = (
-        s.gridHealthy &&
-        s.genStarted &&
-        s.breaker === 'OPEN' &&
-        !s.faults.has('OVERCURRENT') &&
-        !s.faults.has('BRKR-STUCK') &&
-        dv < 500 &&
-        df < 0.03 &&
-        dphi < 5
+        s.gridHealthy && s.genStarted && s.breaker === 'OPEN' && !s.faults.has('OVERCURRENT') && !s.faults.has('BRKR-STUCK') &&
+        dv < 500 && df < 0.03 && dphi < 5
       );
-
-      return {
-        gridHealthy: s.gridHealthy,
-        genStarted: s.genStarted,
-        breaker: s.breaker,
-        faults: s.faults,
-        dv,
-        df,
-        dphi,
-        currentA: s.currentA,
-        syncSafe
-      };
+      return { gridHealthy: s.gridHealthy, genStarted: s.genStarted, breaker: s.breaker, faults: s.faults, dv, df, dphi, syncSafe };
     },
-applyModeDerivedState(){
-  const s = this.state;
-  const mode = s.machine.mode;
 
-  // paused is special: preserve everything else, only flip pause flag
-  if (mode === MODE.PAUSED) {
-    s.paused = true;
-    s.simRunning = true;
-    return;
-  }
+    applyModeDerivedState(){
+      const s = this.state;
+      const mode = s.machine.mode;
+      if (mode === MODE.PAUSED) { s.paused = true; s.simRunning = true; return; }
+      s.paused = false;
+      switch (mode) {
+        case MODE.OFFLINE: s.simRunning = false; s.gridStarted = false; s.gridHealthy = false; s.genStarted = false; break;
+        case MODE.IDLE: s.simRunning = true; s.gridStarted = false; s.gridHealthy = false; s.genStarted = false; break;
+        case MODE.GRID_WARMUP: s.simRunning = true; s.gridStarted = true; s.gridHealthy = false; s.genStarted = false; break;
+        case MODE.GRID_READY: s.simRunning = true; s.gridStarted = true; s.gridHealthy = true; s.genStarted = false; break;
+        case MODE.GEN_STARTING: case MODE.GEN_READY: case MODE.SYNC_WINDOW: case MODE.BREAKER_CLOSING:
+          s.simRunning = true; s.gridStarted = true; s.gridHealthy = true; s.genStarted = true; break;
+        case MODE.PARALLEL: s.simRunning = true; s.gridStarted = true; s.gridHealthy = true; s.genStarted = true; s.breaker = 'CLOSED'; break;
+        case MODE.TRIPPED: s.simRunning = true; s.breaker = 'TRIPPED'; break;
+      }
+      this.updateTrainingModeBadge();
+    },
 
-  s.paused = false;
+    updateTrainingModeBadge() {
+      const badge = this.els.trainingModeBadge;
+      if (!badge) return;
+      if (this.state.scenario && this.state.scenario.active) {
+        badge.textContent = 'DRILL ACTIVE';
+        badge.style.background = 'rgba(246,196,83,.2)';
+        badge.style.color = 'var(--gold)';
+      } else if (document.getElementById('debriefPanel').style.display === 'block') {
+        badge.textContent = 'DEBRIEF';
+        badge.style.background = 'rgba(49,210,138,.2)';
+        badge.style.color = 'var(--green)';
+      } else {
+        badge.textContent = 'FREE RUN';
+        badge.style.background = 'rgba(89,215,255,.1)';
+        badge.style.color = 'var(--cyan)';
+      }
+    },
 
-  switch (mode) {
-    case MODE.OFFLINE:
-      s.simRunning = false;
-      s.gridStarted = false;
-      s.gridHealthy = false;
-      s.genStarted = false;
-      break;
-
-    case MODE.IDLE:
-      s.simRunning = true;
-      s.gridStarted = false;
-      s.gridHealthy = false;
-      s.genStarted = false;
-      break;
-
-    case MODE.GRID_WARMUP:
-      s.simRunning = true;
-      s.gridStarted = true;
-      s.gridHealthy = false;
-      s.genStarted = false;
-      break;
-
-    case MODE.GRID_READY:
-      s.simRunning = true;
-      s.gridStarted = true;
-      s.gridHealthy = true;
-      s.genStarted = false;
-      break;
-
-    case MODE.GEN_STARTING:
-    case MODE.GEN_READY:
-    case MODE.SYNC_WINDOW:
-    case MODE.BREAKER_CLOSING:
-      s.simRunning = true;
-      s.gridStarted = true;
-      s.gridHealthy = true;
-      s.genStarted = true;
-      break;
-
-    case MODE.PARALLEL:
-      s.simRunning = true;
-      s.gridStarted = true;
-      s.gridHealthy = true;
-      s.genStarted = true;
-      s.breaker = 'CLOSED';
-      break;
-
-    case MODE.TRIPPED:
-      s.simRunning = true;
-      s.breaker = 'TRIPPED';
-      // preserve existing grid/gen status so trip context is not erased
-      break;
-  }
-},
     dispatch(event){
-  const prev = this.state.machine.mode;
-  const ctxBefore = this.deriveContext();
+      const prev = this.state.machine.mode;
+      const ctxBefore = this.deriveContext();
+      this.state.machine = transition(this.state.machine, event, ctxBefore);
+      this.applyModeDerivedState();
+      const next = this.state.machine.mode;
+      if (prev !== next) {
+        this.log(`STATE ${prev} -> ${next} on ${event} | ΔV ${ctxBefore.dv.toFixed(0)} V | Δf ${ctxBefore.df.toFixed(3)} Hz | Δφ ${ctxBefore.dphi.toFixed(1)}°`, next === MODE.TRIPPED ? 'trip' : 'good');
+      }
+    },
 
-  this.state.machine = transition(this.state.machine, event, ctxBefore);
-  this.applyModeDerivedState();
-
-  const next = this.state.machine.mode;
-
-  if (prev !== next) {
-    this.log(
-      `STATE ${prev} -> ${next} on ${event} | ΔV ${ctxBefore.dv.toFixed(0)} V | Δf ${ctxBefore.df.toFixed(3)} Hz | Δφ ${ctxBefore.dphi.toFixed(1)}°`,
-      next === MODE.TRIPPED ? 'trip' : 'good'
-    );
-  }
-},
     vibrate(pattern){ try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){} },
     log(msg, level=''){ const now = new Date(); const ts = now.toLocaleTimeString('en-US',{hour12:false}) + '.' + String(now.getMilliseconds()).padStart(3,'0'); const entry = {ts,msg,level}; this.state.logs.unshift(entry); this.renderLogs(); },
+
     renderLogs(highlight){
       const box = this.els.log; box.innerHTML='';
       this.state.logs.slice(0,300).forEach((e, i)=>{ const div=document.createElement('div'); div.className='log-entry ' + (e.level||''); if(highlight===i) div.style.outline='1px solid var(--cyan)'; div.textContent = '['+e.ts+'] ' + e.msg; box.appendChild(div); });
     },
-    startSim(){
-  if(this.state.machine.mode !== MODE.OFFLINE) return;
 
-  this.state.gridV = 0;
-  this.state.gridF = 0;
-
-  this.dispatch(EVENT.SIM_START);
-
-  this.log('Simulation started.', 'good');
-  this.vibrate(12);
-},
+    startSim(){ if(this.state.machine.mode !== MODE.OFFLINE) return; this.dispatch(EVENT.SIM_START); this.log('Simulation started.', 'good'); this.vibrate(12); },
     startGrid(){
-  if(this.state.machine.mode === MODE.OFFLINE){
-    this.startSim();
-  }
-
-  if(this.state.machine.mode !== MODE.IDLE){
-    this.log('Grid start ignored. Machine not in IDLE.', 'warn');
-    return;
-  }
-
-  this.dispatch(EVENT.GRID_START);
-
-  this.log('Grid start sequence initiated.', 'good');
-  this.vibrate(12);
-},
+      if(this.state.machine.mode === MODE.OFFLINE) this.startSim();
+      if(this.state.machine.mode !== MODE.IDLE){ this.log('Grid start ignored. Machine not in IDLE.', 'warn'); return; }
+      this.dispatch(EVENT.GRID_START); this.log('Grid start sequence initiated.', 'good'); this.vibrate(12);
+    },
     startGen(){
-  const mode = this.state.machine.mode;
-  const allowed =
-    mode === MODE.GRID_READY ||
-    mode === MODE.GEN_READY ||
-    mode === MODE.GEN_STARTING ||
-    mode === MODE.SYNC_WINDOW;
-
-  if(!allowed){
-    this.log('Generator start blocked. Grid not ready.', 'warn');
-    return;
-  }
-
-  if(this.state.breaker === 'TRIPPED'){
-    this.log('Generator start blocked. Reset breaker first.', 'warn');
-    return;
-  }
-
-  this.dispatch(EVENT.GEN_START);
-  this.log('Generator prime mover started.', 'good');
-  this.vibrate(12);
-},
+      const mode = this.state.machine.mode;
+      const allowed = mode === MODE.GRID_READY || mode === MODE.GEN_READY || mode === MODE.GEN_STARTING || mode === MODE.SYNC_WINDOW;
+      if(!allowed){ this.log('Generator start blocked. Grid not ready.', 'warn'); return; }
+      if(this.state.breaker === 'TRIPPED'){ this.log('Generator start blocked. Reset breaker first.', 'warn'); return; }
+      this.dispatch(EVENT.GEN_START); this.log('Generator prime mover started.', 'good'); this.vibrate(12);
+    },
     stopGen(){
-  this.state.genStarted = false;
-  this.state.genV = Math.max(0, this.state.genV - 0.6);
-  this.state.genF = Math.max(0, this.state.genF - 2.0);
-  this.dispatch(EVENT.GEN_STOP);
-
-  if(this.state.breaker === 'CLOSED'){
-    this.tripBreaker('Generator stopped while breaker closed');
-    return;
-  }
-
-  this.log('Generator stop command issued.', 'warn');
-},
-    togglePause(){
-  this.dispatch(EVENT.PAUSE_TOGGLE);
-  this.log(this.state.machine.mode === MODE.PAUSED ? 'Simulation paused.' : 'Simulation resumed.', 'warn');
-},
+      this.state.genStarted = false;
+      this.state.genV = Math.max(0, this.state.genV - 0.6);
+      this.state.genF = Math.max(0, this.state.genF - 2.0);
+      this.dispatch(EVENT.GEN_STOP);
+      if(this.state.breaker === 'CLOSED') this.tripBreaker('Generator stopped while breaker closed');
+      else this.log('Generator stop command issued.', 'warn');
+    },
+    togglePause(){ this.dispatch(EVENT.PAUSE_TOGGLE); this.log(this.state.machine.mode === MODE.PAUSED ? 'Simulation paused.' : 'Simulation resumed.', 'warn'); },
     toggleChaos(){ this.state.chaos = !this.state.chaos; document.getElementById('btnChaos').textContent = this.state.chaos ? 'CHAOS ON' : 'CHAOS OFF'; this.log('Grid chaos ' + (this.state.chaos ? 'enabled' : 'disabled') + '.', this.state.chaos ? 'warn':'good'); },
     toggleAutoMatch(){ this.state.autoMatch = !this.state.autoMatch; const txt = this.state.autoMatch ? 'AUTO MATCH ON' : 'AUTO MATCH'; document.getElementById('btnAutoMatch').textContent = txt; const dock = document.getElementById('btnAutoMatchDock'); if(dock) dock.textContent = txt; this.log('Auto-match ' + (this.state.autoMatch ? 'enabled' : 'disabled') + '.', this.state.autoMatch ? 'good':'warn'); },
     raiseLoad(){ this.state.loadDemandKW = this.clamp(this.state.loadDemandKW + 350, 1800, 9000); this.log('Load request raised to ' + Math.round(this.state.loadDemandKW) + ' kW.', 'good'); },
     resetAll(){
-  clearTimeout(this.state.replayTimer);
-  this.state = machineResetState(this.state);
-
-  document.getElementById('btnChaos').textContent = 'CHAOS OFF';
-  document.getElementById('btnAutoMatch').textContent = 'AUTO MATCH';
-
-  const dock = document.getElementById('btnAutoMatchDock');
-  if(dock) dock.textContent = 'AUTO MATCH';
-
-  this.log('Full system reset.', 'warn');
-  this.updateUI();
-},
+      clearTimeout(this.state.replayTimer);
+      this.state = machineResetState(this.state);
+      document.getElementById('btnChaos').textContent = 'CHAOS OFF';
+      document.getElementById('btnAutoMatch').textContent = 'AUTO MATCH';
+      const dock = document.getElementById('btnAutoMatchDock'); if(dock) dock.textContent = 'AUTO MATCH';
+      document.getElementById('debriefPanel').style.display = 'none';
+      this.log('Full system reset.', 'warn');
+      this.updateUI();
+    },
     resetBreaker(){
-  if(this.state.breaker !== 'TRIPPED' && this.state.breaker !== 'OPEN'){
-    this.log('Breaker reset ignored. Breaker is not tripped.', 'warn');
-    return;
-  }
-
-  this.state.breaker = 'OPEN';
-  this.state.brkrClosingTimer = 0;
-
-  const ctx = this.deriveContext();
-
-  if(!this.state.simRunning){
-    this.state.machine = { ...this.state.machine, mode: MODE.OFFLINE };
-  } else if(!this.state.gridStarted){
-    this.state.machine = { ...this.state.machine, mode: MODE.IDLE };
-  } else if(!this.state.gridHealthy){
-    this.state.machine = { ...this.state.machine, mode: MODE.GRID_WARMUP };
-  } else if(!this.state.genStarted){
-    this.state.machine = { ...this.state.machine, mode: MODE.GRID_READY };
-  } else {
-    this.state.machine = {
-      ...this.state.machine,
-      mode: ctx.syncSafe ? MODE.SYNC_WINDOW : MODE.GEN_READY
-    };
-  }
-
-  this.log('Breaker reset to OPEN.', 'good');
-},
+      if(this.state.breaker !== 'TRIPPED' && this.state.breaker !== 'OPEN') return;
+      this.state.breaker = 'OPEN'; this.state.brkrClosingTimer = 0;
+      const ctx = this.deriveContext();
+      if(!this.state.simRunning) this.state.machine = { ...this.state.machine, mode: MODE.OFFLINE };
+      else if(!this.state.gridStarted) this.state.machine = { ...this.state.machine, mode: MODE.IDLE };
+      else if(!this.state.gridHealthy) this.state.machine = { ...this.state.machine, mode: MODE.GRID_WARMUP };
+      else if(!this.state.genStarted) this.state.machine = { ...this.state.machine, mode: MODE.GRID_READY };
+      else this.state.machine = { ...this.state.machine, mode: ctx.syncSafe ? MODE.SYNC_WINDOW : MODE.GEN_READY };
+      this.log('Breaker reset to OPEN.', 'good');
+    },
     toggleBreakerCommand(){
-  if(this.state.breaker === 'TRIPPED'){
-    this.log('Close blocked. Breaker is tripped.', 'warn');
-    return;
-  }
-
-  if(this.state.breaker === 'CLOSED'){
-    this.state.breaker = 'OPEN';
-    this.dispatch(EVENT.BREAKER_OPEN_CMD);
-    this.log('Breaker opened by operator.', 'warn');
-    this.vibrate(12);
-    return;
-  }
-
-  if(this.state.faults.has('BRKR-STUCK')){
-    this.log('Breaker close failed. Breaker stuck fault active.', 'trip');
-    this.vibrate([120,50,120]);
-    return;
-  }
-
-  const ctx = this.deriveContext();
-
-  if(this.state.machine.mode === MODE.GEN_READY && ctx.syncSafe){
-    this.dispatch(EVENT.SYNC_READY);
-  }
-
-  if(!ctx.syncSafe){
-    this.tripBreaker(
-      `Unsafe sync attempt. ΔV ${ctx.dv.toFixed(0)} V, Δf ${ctx.df.toFixed(3)} Hz, Δφ ${ctx.dphi.toFixed(1)}°`
-    );
-    return;
-  }
-
-  if(this.state.machine.mode !== MODE.SYNC_WINDOW){
-    this.log('Close blocked. Not in sync window.', 'warn');
-    return;
-  }
-
-  this.dispatch(EVENT.BREAKER_CLOSE_CMD);
-  this.state.brkrClosingTimer = 0.12;
-  this.state.postCloseHold = 1.2;
-  this.log('Breaker close issued in sync window.', 'good');
-  this.vibrate([18,30,18]);
-},
+      if(this.state.breaker === 'TRIPPED'){ this.log('Close blocked. Breaker is tripped.', 'warn'); return; }
+      if(this.state.breaker === 'CLOSED'){ this.state.breaker = 'OPEN'; this.dispatch(EVENT.BREAKER_OPEN_CMD); this.log('Breaker opened by operator.', 'warn'); this.vibrate(12); return; }
+      if(this.state.faults.has('BRKR-STUCK')){ this.log('Breaker close failed. Breaker stuck fault active.', 'trip'); this.vibrate([120,50,120]); return; }
+      const ctx = this.deriveContext();
+      if(!ctx.syncSafe){ this.tripBreaker(`Unsafe sync attempt. ΔV ${ctx.dv.toFixed(0)} V, Δf ${ctx.df.toFixed(3)} Hz, Δφ ${ctx.dphi.toFixed(1)}°`); return; }
+      if(this.state.machine.mode !== MODE.SYNC_WINDOW){ this.log('Close blocked. Not in sync window.', 'warn'); return; }
+      this.dispatch(EVENT.BREAKER_CLOSE_CMD);
+      this.state.brkrClosingTimer = 0.12;
+      this.state.postCloseHold = 1.2;
+      this.log('Breaker close issued in sync window.', 'good');
+      this.vibrate([18,30,18]);
+    },
     tripBreaker(reason){
-  this.state.breaker = 'TRIPPED';
-  this.state.brkrClosingTimer = 0;
-  this.state.currentA = 0;
-  this.state.pKW = 0;
-  this.state.qMVAr = 0;
-  this.state.sKVA = 0;
-  this.state.pf = 1;
-  this.dispatch(EVENT.PROTECTION_TRIP);
-  this.log(reason, 'trip');
-  this.vibrate([100,60,100,60,180]);
-},
-   injectFault(name){
-  this.state.faults.add(name);
-  this.dispatch(EVENT.FAULT_INJECTED);
-  this.log(name + ' fault injected.', 'trip');
-  this.vibrate([60,40,100]);
-
-  if(name === 'PHASE-ERR'){
-    this.state.genAngle += 22;
-  }
-
-  if(name === 'OVERCURRENT' && this.state.breaker === 'CLOSED'){
-    this.tripBreaker('50/51 trip on overcurrent fault');
-  }
-},
+      this.state.breaker = 'TRIPPED'; this.state.brkrClosingTimer = 0; this.state.currentA = 0; this.state.pKW = 0; this.state.qMVAr = 0; this.state.sKVA = 0; this.state.pf = 1;
+      this.dispatch(EVENT.PROTECTION_TRIP);
+      this.log(reason, 'trip');
+      this.vibrate([100,60,100,60,180]);
+      if (this.state.scenario && this.state.scenario.active) {
+        this.state.scenario.trips++;
+        this.state.scenario.unsafeAttempts++;
+        this.endScenario(false);
+      }
+    },
+    injectFault(name){
+      this.state.faults.add(name);
+      this.dispatch(EVENT.FAULT_INJECTED);
+      this.log(name + ' fault injected.', 'trip');
+      this.vibrate([60,40,100]);
+      if(name === 'PHASE-ERR') this.state.genAngle += 22;
+      if(name === 'OVERCURRENT' && this.state.breaker === 'CLOSED') this.tripBreaker('50/51 trip on overcurrent fault');
+    },
     clearFaults(){
-  if(this.state.faults.size===0){
-    this.log('No active faults to clear.', 'warn');
-    return;
-  }
-  this.state.faults.clear();
-  this.dispatch(EVENT.FAULT_CLEARED);
-  this.log('All faults cleared.', 'good');
-},
+      if(this.state.faults.size===0) return;
+      this.state.faults.clear();
+      this.dispatch(EVENT.FAULT_CLEARED);
+      this.log('All faults cleared.', 'good');
+    },
     applyPreset(key){ this.els.timingPreset.value = key; this.els.timingInput.value = presets[key] || presets.sync; this.renderTiming(); },
     parseTiming(text){ return text.split(/\n+/).map(s=>s.trim()).filter(Boolean).map(line=>{ const idx=line.indexOf(':'); if(idx<0) return null; const name=line.slice(0,idx).trim(); const seq=line.slice(idx+1).trim().replace(/\s+/g,''); return {name, seq}; }).filter(Boolean); },
-    renderTiming(){ const lanes = this.parseTiming(this.els.timingInput.value); const cellW = 22, laneH = 34, left=84, top=16; const maxLen = Math.max(1, ...lanes.map(l=>l.seq.length)); const width = left + maxLen*cellW + 20; const height = top + lanes.length*laneH + 20; let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">`;
+    renderTiming(){
+      const lanes = this.parseTiming(this.els.timingInput.value);
+      const cellW = 22, laneH = 34, left=84, top=16;
+      const maxLen = Math.max(1, ...lanes.map(l=>l.seq.length));
+      const width = left + maxLen*cellW + 20;
+      const height = top + lanes.length*laneH + 20;
+      let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">`;
       svg += `<rect width="100%" height="100%" fill="#ffffff"/>`;
       for(let i=0;i<maxLen;i++){ const x=left+i*cellW; svg += `<line x1="${x}" y1="8" x2="${x}" y2="${height-10}" stroke="#e5e7eb" stroke-width="1"/>`; svg += `<text x="${x+cellW/2}" y="12" font-size="9" text-anchor="middle" fill="#64748b">${i+1}</text>`; }
-      lanes.forEach((lane, idx)=>{ const y = top + idx*laneH; svg += `<text x="10" y="${y+18}" font-size="12" font-family="monospace" fill="#111827">${lane.name}</text>`; let prev = lane.seq[0] === '1' ? 0 : 1; for(let i=0;i<lane.seq.length;i++){ const ch = lane.seq[i] === '.' && i>0 ? lane.seq[i-1] : lane.seq[i]; const level = ch === '1' ? 0 : 1; const x = left + i*cellW; const yLevel = y + (level?22:8); const prevY = y + (prev?22:8); if(i===0){ svg += `<line x1="${x}" y1="${yLevel}" x2="${x+cellW}" y2="${yLevel}" stroke="#2563eb" stroke-width="2.5"/>`; } else { svg += `<line x1="${x}" y1="${prevY}" x2="${x}" y2="${yLevel}" stroke="#2563eb" stroke-width="2.5"/>`; svg += `<line x1="${x}" y1="${yLevel}" x2="${x+cellW}" y2="${yLevel}" stroke="#2563eb" stroke-width="2.5"/>`; } prev = level; }
-      }); svg += `</svg>`; this.els.timingView.innerHTML = svg; },
+      lanes.forEach((lane, idx)=>{ const y = top + idx*laneH; svg += `<text x="10" y="${y+18}" font-size="12" font-family="monospace" fill="#111827">${lane.name}</text>`; let prev = lane.seq[0] === '1' ? 0 : 1; for(let i=0;i<lane.seq.length;i++){ const ch = lane.seq[i] === '.' && i>0 ? lane.seq[i-1] : lane.seq[i]; const level = ch === '1' ? 0 : 1; const x = left + i*cellW; const yLevel = y + (level?22:8); const prevY = y + (prev?22:8); if(i===0){ svg += `<line x1="${x}" y1="${yLevel}" x2="${x+cellW}" y2="${yLevel}" stroke="#2563eb" stroke-width="2.5"/>`; } else { svg += `<line x1="${x}" y1="${prevY}" x2="${x}" y2="${yLevel}" stroke="#2563eb" stroke-width="2.5"/>`; svg += `<line x1="${x}" y1="${yLevel}" x2="${x+cellW}" y2="${yLevel}" stroke="#2563eb" stroke-width="2.5"/>`; } prev = level; } });
+      svg += `</svg>`;
+      this.els.timingView.innerHTML = svg;
+    },
     async refreshTelemetry(){
       this.state.teleMode = 'Demo';
       this.state.telemetryFreq = 60 + Math.sin(Date.now()/120000)*0.012;
       this.state.telemetryLoad = (15400 + Math.sin(Date.now()/90000)*600).toFixed(0) + ' MW';
       this.state.telemetryUpdated = new Date().toLocaleTimeString();
-      const targetUrl = 'https://www.iso-ne.com/isoexpress/web/reports/system-operational-data/-/tree/frequency';
-      try {
-        const ctrl = new AbortController(); const timer = setTimeout(()=>ctrl.abort(), 2500);
-        const res = await fetch(targetUrl, {mode:'cors', signal:ctrl.signal}); clearTimeout(timer);
-        if(res.ok){ this.state.teleMode = 'Live Attempt'; this.state.telemetryUpdated = new Date().toLocaleTimeString(); }
-      } catch(e) {}
       this.updateTelemetryUI();
     },
-    updateTelemetryUI(){ this.els.teleMode.textContent = this.state.teleMode; this.els.teleSource.textContent = this.state.teleMode === 'Demo' ? 'Offline Ghost Frequency' : 'Public web overlay'; this.els.teleFreq.textContent = this.state.telemetryFreq.toFixed(3) + ' Hz'; this.els.teleLoad.textContent = this.state.telemetryLoad; this.els.teleUpdated.textContent = this.state.telemetryUpdated; },
-    exportLogs(){ const payload = { exportedAt:new Date().toISOString(), state:{ breaker:this.state.breaker, gridF:this.state.gridF, genF:this.state.genF, gridV:this.state.gridV, genV:this.state.genV }, logs:this.state.logs }; const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'phoenix_soe_logs.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 5000); this.log('SOE log exported.', 'good'); },
+    updateTelemetryUI(){
+      this.els.teleMode.textContent = this.state.teleMode;
+      this.els.teleSource.textContent = this.state.teleMode === 'Demo' ? 'Offline Ghost Frequency' : 'Public web overlay';
+      this.els.teleFreq.textContent = this.state.telemetryFreq.toFixed(3) + ' Hz';
+      this.els.teleLoad.textContent = this.state.telemetryLoad;
+      this.els.teleUpdated.textContent = this.state.telemetryUpdated;
+    },
+    exportLogs(){
+      const payload = { exportedAt:new Date().toISOString(), state:{ breaker:this.state.breaker, gridF:this.state.gridF, genF:this.state.genF, gridV:this.state.gridV, genV:this.state.genV }, logs:this.state.logs };
+      const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'phoenix_soe_logs.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+      this.log('SOE log exported.', 'good');
+    },
     clearLogs(){ this.state.logs = []; this.renderLogs(); this.log('SOE log cleared.', 'warn'); },
-    replayLogs(){ clearTimeout(this.state.replayTimer); const items = [...this.state.logs].reverse(); if(!items.length) return; let i=0; const step = ()=>{ this.renderLogs(this.state.logs.length - 1 - i); i++; if(i<items.length) this.state.replayTimer = setTimeout(step, 220); }; step(); },
+    replayLogs(){
+      clearTimeout(this.state.replayTimer);
+      const items = [...this.state.logs].reverse();
+      if(!items.length) return;
+      let i=0;
+      const step = ()=>{ this.renderLogs(this.state.logs.length - 1 - i); i++; if(i<items.length) this.state.replayTimer = setTimeout(step, 220); };
+      step();
+    },
     clamp(v,min,max){ return Math.min(max, Math.max(min, v)); },
     wrapDeg(d){ let x = d % 360; if(x > 180) x -= 360; if(x < -180) x += 360; return x; },
     pushHistory(){ this.state.history.push({ t:performance.now(), gridF:this.state.gridF, genF:this.state.genF, currentA:this.state.currentA, pKW:this.state.pKW }); if(this.state.history.length > 300) this.state.history.shift(); },
+
+    getBlockerReason() {
+      const s = this.state;
+      const ctx = this.deriveContext();
+      if (s.breaker === 'TRIPPED') return 'Breaker is TRIPPED — reset first';
+      if (!s.gridHealthy) return 'Grid not healthy — wait for warmup';
+      if (!s.genStarted) return 'Generator offline — start GEN';
+      if (s.faults.size > 0) return 'Active fault present — clear faults';
+      if (!ctx.syncSafe) {
+        if (ctx.dv >= 500) return 'ΔV too high — trim voltage';
+        if (ctx.df >= 0.03) return 'Δf too high — trim speed';
+        if (ctx.dphi >= 5) return 'Δφ too high — wait for angle';
+        return 'Sync conditions not met';
+      }
+      if (s.machine.mode !== MODE.SYNC_WINDOW) return 'Not yet in sync window';
+      return 'All conditions met — ready to close';
+    },
+
+    getNextAction() {
+      const m = this.state.machine.mode;
+      if (m === MODE.OFFLINE) return 'Press SIM START to begin training';
+      if (m === MODE.IDLE) return 'Press GRID START to energize the bus';
+      if (m === MODE.GRID_READY) return 'Press GEN START to bring generator online';
+      if (m === MODE.SYNC_WINDOW) return 'Close breaker — align at 12 o’clock';
+      if (m === MODE.GEN_READY) return 'Tune governor/AVR or enable AUTO MATCH';
+      if (m === MODE.PARALLEL) return 'Raise load or observe power flow';
+      if (m === MODE.TRIPPED) return 'Reset breaker and review trip cause';
+      if (m === MODE.PAUSED) return 'Resume simulation to continue training';
+      return 'Observe system state and decide next action';
+    },
+
+    getGuidanceWhy() {
+      const s = this.state;
+      // When a training scenario is active the objective takes precedence
+      if (s.scenario && s.scenario.active) {
+        return `Scenario objective: ${s.scenario.objective}`;
+      }
+      // Provide contextual guidance based on the simulator's current mode. This
+      // helps operators understand *why* the next action is recommended.
+      switch (s.machine.mode) {
+        case MODE.OFFLINE:
+          return 'Simulation offline. Press SIM START to begin training.';
+        case MODE.IDLE:
+          return 'Grid is offline. Press GRID START to energize the bus.';
+        case MODE.GRID_WARMUP:
+          return 'Grid is energizing. Wait for voltage and frequency to stabilize.';
+        case MODE.GRID_READY:
+          return 'Grid healthy. Start the generator when ready.';
+        case MODE.GEN_STARTING:
+          return 'Generator starting. Monitor voltage and frequency as it comes online.';
+        case MODE.GEN_READY:
+          return 'Align voltage, frequency and phase. Use governor/AVR or AUTO MATCH to enter sync window.';
+        case MODE.SYNC_WINDOW:
+          return 'Safe sync band achieved (ΔV < 500 V, Δf < 0.03 Hz, Δφ < 5°). Align at 12 o’clock and close breaker.';
+        case MODE.BREAKER_CLOSING:
+          return 'Breaker closing… maintain alignment until closure.';
+        case MODE.PARALLEL:
+          return 'Generator synchronized. Raise load gradually and monitor power flow.';
+        case MODE.TRIPPED:
+          return 'Breaker tripped. Review log for trip cause, clear faults and reset breaker.';
+        case MODE.PAUSED:
+          return 'Simulation paused. Resume to continue training.';
+      }
+      // If the breaker is tripped outside of the above states
+      if (s.breaker === 'TRIPPED') {
+        return 'Review log for trip cause and clear faults if present';
+      }
+      return 'Monitor synchroscope needle and status indicators';
+    },
+
+    updateBreakerButton() {
+      const btn = document.getElementById('btnToggleBreaker');
+      const dockBtn = document.getElementById('btnToggleBreakerDock');
+      if (!btn) return;
+      let label = 'TOGGLE BRKR';
+      if (this.state.breaker === 'TRIPPED') label = 'RESET BREAKER';
+      else if (this.state.breaker === 'CLOSED') label = 'OPEN BREAKER';
+      else if (this.state.machine.mode === MODE.SYNC_WINDOW) label = 'CLOSE BREAKER';
+      else label = 'CLOSE BLOCKED';
+      btn.textContent = label;
+      if (dockBtn) dockBtn.textContent = label;
+    },
+
+    loadScenario(){
+      const id = this.els.scenarioSelect.value;
+      this.resetAll();
+      const def = SCENARIOS[id];
+      this.state.scenario = { 
+        active: true, 
+        id: id, 
+        objective: def.objective,
+        startTime: Date.now(), 
+        score: 0, 
+        unsafeAttempts: 0, 
+        trips: 0, 
+        syncTime: 0,
+        definition: def
+      };
+      this.log(`SCENARIO STARTED: ${id.toUpperCase()} — ${def.objective}`, 'good');
+      this.vibrate([30,20,30]);
+
+      if(id === 'quickstart'){ this.startSim(); setTimeout(()=>this.startGrid(),800); }
+      else if(id === 'vsag'){ this.startSim(); setTimeout(()=>this.startGrid(),800); setTimeout(()=>{ this.injectFault('V-SAG'); }, 4200); }
+      else if(id === 'phaseerr'){ this.startSim(); setTimeout(()=>this.startGrid(),800); setTimeout(()=>{ this.startGen(); this.injectFault('PHASE-ERR'); }, 3800); }
+      else if(id === 'overcurrent'){ this.startSim(); setTimeout(()=>this.startGrid(),800); setTimeout(()=>{ this.startGen(); this.injectFault('OVERCURRENT'); }, 4500); }
+      else if(id === 'stuck'){ this.startSim(); setTimeout(()=>this.startGrid(),800); setTimeout(()=>{ this.injectFault('BRKR-STUCK'); }, 4000); }
+      else if(id === 'combined'){ this.startSim(); setTimeout(()=>this.startGrid(),800); setTimeout(()=>{ this.injectFault('V-SAG'); this.injectFault('PHASE-ERR'); }, 4200); }
+    },
+
+    endScenario(success) {
+      if (!this.state.scenario || !this.state.scenario.active) return;
+      const duration = (Date.now() - this.state.scenario.startTime) / 1000;
+      this.state.scenario.syncTime = duration;
+      let score = 100;
+      score -= this.state.scenario.unsafeAttempts * 15;
+      score -= this.state.scenario.trips * 30;
+      if (success) score += 20;
+      this.state.scenario.score = Math.max(0, score);
+
+      const def = this.state.scenario.definition;
+      const debriefHTML = `
+        <strong>Scenario: ${this.state.scenario.id.toUpperCase()}</strong><br>
+        Objective: ${this.state.scenario.objective}<br>
+        Time to sync: ${this.state.scenario.syncTime.toFixed(1)} s<br>
+        Unsafe attempts: ${this.state.scenario.unsafeAttempts}<br>
+        Trips: ${this.state.scenario.trips}<br>
+        <span style="color:var(--green);font-weight:700">FINAL SCORE: ${Math.round(this.state.scenario.score)} / 120</span><br>
+        ${def.debriefTemplate(Math.round(this.state.scenario.score), this.state.scenario)}
+      `;
+      document.getElementById('debriefContent').innerHTML = debriefHTML;
+      document.getElementById('debriefPanel').style.display = 'block';
+      this.log(`SCENARIO COMPLETE — Score ${Math.round(this.state.scenario.score)}`, success ? 'good' : 'trip');
+      this.state.lastScore = this.state.scenario.score;
+      if (!this.state.bestScore[this.state.scenario.id] || this.state.scenario.score > this.state.bestScore[this.state.scenario.id]) {
+        this.state.bestScore[this.state.scenario.id] = this.state.scenario.score;
+      }
+      this.state.scenario.active = false;
+      this.updateTrainingModeBadge();
+    },
+
     updatePhysics(dt){
-  if(this.state.paused) return;
-  const s = this.state;
-  const prevGridHealthy = s.gridHealthy;
+      if(this.state.paused) return;
+      const s = this.state;
+      const prevGridHealthy = s.gridHealthy;
 
-  if(s.gridStarted){
-    s.gridF += (this.state.telemetryFreq - s.gridF) * dt * (s.gridHealthy ? 0.7 : 0.25);
-    s.gridV += (13.8 - s.gridV) * dt * 0.55;
-    if(s.gridV > 13.5 && s.gridF > 59.8) s.gridHealthy = true;
-  } else {
-    s.gridF += (0 - s.gridF) * dt * 0.8;
-    s.gridV += (0 - s.gridV) * dt * 0.8;
-    s.gridHealthy = false;
-  }
+      if(s.gridStarted){
+        s.gridF += (this.state.telemetryFreq - s.gridF) * dt * (s.gridHealthy ? 0.7 : 0.25);
+        s.gridV += (13.8 - s.gridV) * dt * 0.55;
+        if(s.gridV > 13.5 && s.gridF > 59.8) s.gridHealthy = true;
+      } else {
+        s.gridF += (0 - s.gridF) * dt * 0.8;
+        s.gridV += (0 - s.gridV) * dt * 0.8;
+        s.gridHealthy = false;
+      }
 
-  if(!prevGridHealthy && s.gridHealthy){
-    this.dispatch(EVENT.GRID_HEALTHY);
-  }
+      if(!prevGridHealthy && s.gridHealthy) this.dispatch(EVENT.GRID_HEALTHY);
 
-  if(s.chaos && s.gridStarted){
-    s.gridF += (Math.random() - 0.5) * 0.01;
-    s.gridV += (Math.random() - 0.5) * 0.025;
-  }
+      if(s.chaos && s.gridStarted){
+        s.gridF += (Math.random() - 0.5) * 0.01;
+        s.gridV += (Math.random() - 0.5) * 0.025;
+      }
 
-  if(s.faults.has('V-SAG')) s.gridV = Math.max(12.1, s.gridV - dt * 0.35);
-  if(s.faults.has('F-SURGE')) s.gridF = Math.min(60.35, s.gridF + dt * 0.18);
+      if(s.faults.has('V-SAG')) s.gridV = Math.max(12.1, s.gridV - dt * 0.35);
+      if(s.faults.has('F-SURGE')) s.gridF = Math.min(60.35, s.gridF + dt * 0.18);
 
-  if(s.genStarted){
-    if(s.autoMatch && s.breaker !== 'CLOSED'){
-      s.govSet += (s.gridF - s.govSet) * dt * 0.8;
-      s.avrSet += (s.gridV - s.avrSet) * dt * 0.8;
-      this.els.govSlider.value = s.govSet.toFixed(2);
-      this.els.govRead.textContent = s.govSet.toFixed(2) + ' Hz';
-      this.els.avrSlider.value = s.avrSet.toFixed(2);
-      this.els.avrRead.textContent = s.avrSet.toFixed(2) + ' kV';
-    }
+      if(s.genStarted){
+        if(s.autoMatch && s.breaker !== 'CLOSED'){
+          s.govSet += (s.gridF - s.govSet) * dt * 0.8;
+          s.avrSet += (s.gridV - s.avrSet) * dt * 0.8;
+          this.els.govSlider.value = s.govSet.toFixed(2);
+          this.els.govRead.textContent = s.govSet.toFixed(2) + ' Hz';
+          this.els.avrSlider.value = s.avrSet.toFixed(2);
+          this.els.avrRead.textContent = s.avrSet.toFixed(2) + ' kV';
+        }
 
-    if(s.breaker === 'CLOSED'){
-      const demandRatio = this.clamp((s.loadDemandKW - 4200) / 3800, -0.2, 1.2);
-      const droopTarget = this.clamp(demandRatio * 0.065, -0.01, 0.065);
-      s.governorDroopHz += (droopTarget - s.governorDroopHz) * dt * 0.9;
-      s.genF += ((s.gridF - s.governorDroopHz) - s.genF) * dt * 1.8;
-      s.genV += (s.gridV - s.genV) * dt * 2.0;
-      s.genAngle = s.gridAngle;
-    } else {
-      s.genF += (s.govSet - s.genF) * dt * 0.55;
-      s.genV += (s.avrSet - s.genV) * dt * 0.75;
-    }
-  } else {
-    s.genF += (0 - s.genF) * dt * 1.3;
-    s.genV += (0 - s.genV) * dt * 1.3;
-    s.governorDroopHz += (0 - s.governorDroopHz) * dt * 2;
-  }
+        if(s.breaker === 'CLOSED'){
+          const demandRatio = this.clamp((s.loadDemandKW - 4200) / 3800, -0.2, 1.2);
+          const droopTarget = this.clamp(demandRatio * 0.065, -0.01, 0.065);
+          s.governorDroopHz += (droopTarget - s.governorDroopHz) * dt * 0.9;
+          s.genF += ((s.gridF - s.governorDroopHz) - s.genF) * dt * 1.8;
+          s.genV += (s.gridV - s.genV) * dt * 2.0;
+          s.genAngle = s.gridAngle;
+        } else {
+          s.genF += (s.govSet - s.genF) * dt * 0.55;
+          s.genV += (s.avrSet - s.genV) * dt * 0.75;
+        }
+      } else {
+        s.genF += (0 - s.genF) * dt * 1.3;
+        s.genV += (0 - s.genV) * dt * 1.3;
+        s.governorDroopHz += (0 - s.governorDroopHz) * dt * 2;
+      }
 
- if(s.faults.has('PHASE-ERR') && s.breaker !== 'CLOSED') s.genAngle += 50 * dt;
+      if(s.faults.has('PHASE-ERR') && s.breaker !== 'CLOSED') s.genAngle += 50 * dt;
 
-s.gridAngle += s.gridF * 360 * dt;
+      s.gridAngle += s.gridF * 360 * dt;
+      if(s.breaker === 'CLOSED'){
+        s.genAngle = s.gridAngle;
+      } else {
+        s.genAngle += s.genF * 360 * dt;
+      }
 
-if(s.breaker === 'CLOSED'){
-  s.genAngle = s.gridAngle;
-} else {
-  s.genAngle += s.genF * 360 * dt;
-}
+      s.phaseDeg = this.wrapDeg(s.genAngle - s.gridAngle);
+      s.slipHz = s.breaker === 'CLOSED' ? 0 : (s.genF - s.gridF);
 
-s.phaseDeg = this.wrapDeg(s.genAngle - s.gridAngle);
-s.slipHz = s.breaker === 'CLOSED' ? 0 : (s.genF - s.gridF);
-  const ctx = this.deriveContext();
+      const ctx = this.deriveContext();
+      if(this.state.machine.mode === MODE.GEN_STARTING){
+        this.dispatch(ctx.syncSafe ? EVENT.SYNC_READY : EVENT.SYNC_LOST);
+      } else if(ctx.syncSafe && this.state.machine.mode === MODE.GEN_READY){
+        this.dispatch(EVENT.SYNC_READY);
+      } else if(!ctx.syncSafe && this.state.machine.mode === MODE.SYNC_WINDOW){
+        this.dispatch(EVENT.SYNC_LOST);
+      }
 
-  if(this.state.machine.mode === MODE.GEN_STARTING){
-    this.dispatch(ctx.syncSafe ? EVENT.SYNC_READY : EVENT.SYNC_LOST);
-  } else if(ctx.syncSafe && this.state.machine.mode === MODE.GEN_READY){
-    this.dispatch(EVENT.SYNC_READY);
-  } else if(!ctx.syncSafe && this.state.machine.mode === MODE.SYNC_WINDOW){
-    this.dispatch(EVENT.SYNC_LOST);
-  }
+      if(s.brkrClosingTimer > 0){
+        s.brkrClosingTimer -= dt;
+        if(s.brkrClosingTimer <= 0){
+          s.breaker = 'CLOSED';
+          s.genAngle = s.gridAngle;
+          this.dispatch(EVENT.BREAKER_CLOSE_CONFIRMED);
+          this.log('Breaker is CLOSED.', 'good');
+          if (this.state.scenario && this.state.scenario.active && this.state.scenario.definition.successCondition(this.state)) {
+            this.endScenario(true);
+          }
+        }
+      }
 
-  if(s.brkrClosingTimer > 0){
-    s.brkrClosingTimer -= dt;
-    if(s.brkrClosingTimer <= 0){
-      s.breaker = 'CLOSED';
-      s.genAngle = s.gridAngle;
-      this.dispatch(EVENT.BREAKER_CLOSE_CONFIRMED);
-      this.log('Breaker is CLOSED.', 'good');
-    }
-  }
+      if(s.postCloseHold > 0) s.postCloseHold -= dt;
 
-  if(s.postCloseHold > 0) s.postCloseHold -= dt;
+      if(s.breaker === 'CLOSED'){
+        const dV = s.genV - s.gridV;
+        const dF = s.genF - s.gridF;
+        const dP = this.wrapDeg(s.phaseDeg);
+        s.pKW += (s.loadDemandKW - s.pKW) * dt * 1.3;
+        s.qMVAr += (this.clamp(dV * 2.2, -3.5, 3.5) - s.qMVAr) * dt * 1.1;
+        s.sKVA = Math.round(Math.sqrt(s.pKW * s.pKW + (s.qMVAr * 1000) * (s.qMVAr * 1000)));
+        s.pf = s.sKVA > 1 ? this.clamp(Math.abs(s.pKW) / s.sKVA, 0, 1) : 1;
+        const baseA = Math.abs(s.sKVA) > 1 ? (s.sKVA * 1000) / (Math.sqrt(3) * Math.max(1, s.gridV * 1000)) : 0;
+        const syncStressA = Math.abs(dP) * 8 + Math.abs(dF) * 1800 + Math.abs(dV) * 120;
+        s.currentA = baseA + syncStressA + 10;
+        if(s.faults.has('OVERCURRENT')) s.currentA = 2200;
+        if(s.postCloseHold <= 0 && (Math.abs(dV) * 1000 > 1000 || Math.abs(dF) > 0.2 || s.currentA > 1500)){
+          this.tripBreaker(`Protection trip. ΔV ${(Math.abs(dV) * 1000).toFixed(0)} V, Δf ${Math.abs(dF).toFixed(3)} Hz, I ${s.currentA.toFixed(0)} A`);
+        }
+      } else {
+        s.currentA += (0 - s.currentA) * dt * 3;
+        s.pKW += (0 - s.pKW) * dt * 3;
+        s.qMVAr += (0 - s.qMVAr) * dt * 3;
+        s.sKVA = 0;
+        s.pf = 1;
+      }
 
-  if(s.breaker === 'CLOSED'){
-    const dV = s.genV - s.gridV;
-    const dF = s.genF - s.gridF;
-    const dP = this.wrapDeg(s.phaseDeg);
+      const tempTarget = 25 + (Math.max(0, s.currentA - 80) / 12) + Math.max(0, Math.abs(s.qMVAr)) * 2.8 + (s.chaos ? 1.8 : 0);
+      s.genTempC += (tempTarget - s.genTempC) * dt * 0.35;
+      s.gridV = this.clamp(s.gridV, 0, 15.5);
+      s.genV = this.clamp(s.genV, 0, 15.5);
+      s.gridF = this.clamp(s.gridF, 0, 61);
+      s.genF = this.clamp(s.genF, 0, 61);
+    },
 
-    s.pKW += (s.loadDemandKW - s.pKW) * dt * 1.3;
-    s.qMVAr += (this.clamp(dV * 2.2, -3.5, 3.5) - s.qMVAr) * dt * 1.1;
-    s.sKVA = Math.round(Math.sqrt(s.pKW * s.pKW + (s.qMVAr * 1000) * (s.qMVAr * 1000)));
-    s.pf = s.sKVA > 1 ? this.clamp(Math.abs(s.pKW) / s.sKVA, 0, 1) : 1;
-
-    const baseA = Math.abs(s.sKVA) > 1
-      ? (s.sKVA * 1000) / (Math.sqrt(3) * Math.max(1, s.gridV * 1000))
-      : 0;
-
-    const syncStressA = Math.abs(dP) * 8 + Math.abs(dF) * 1800 + Math.abs(dV) * 120;
-    s.currentA = baseA + syncStressA + 10;
-
-    if(s.faults.has('OVERCURRENT')) s.currentA = 2200;
-
-    if(
-      s.postCloseHold <= 0 &&
-      (Math.abs(dV) * 1000 > 1000 || Math.abs(dF) > 0.2 || s.currentA > 1500)
-    ){
-      this.tripBreaker(
-        `Protection trip. ΔV ${(Math.abs(dV) * 1000).toFixed(0)} V, Δf ${Math.abs(dF).toFixed(3)} Hz, I ${s.currentA.toFixed(0)} A`
-      );
-    }
-  } else {
-    s.currentA += (0 - s.currentA) * dt * 3;
-    s.pKW += (0 - s.pKW) * dt * 3;
-    s.qMVAr += (0 - s.qMVAr) * dt * 3;
-    s.sKVA = 0;
-    s.pf = 1;
-  }
-
-  const tempTarget =
-    25 +
-    (Math.max(0, s.currentA - 80) / 12) +
-    Math.max(0, Math.abs(s.qMVAr)) * 2.8 +
-    (s.chaos ? 1.8 : 0);
-
-  s.genTempC += (tempTarget - s.genTempC) * dt * 0.35;
-  s.gridV = this.clamp(s.gridV, 0, 15.5);
-  s.genV = this.clamp(s.genV, 0, 15.5);
-  s.gridF = this.clamp(s.gridF, 0, 61);
-  s.genF = this.clamp(s.genF, 0, 61);
-},
-    updateUI(){ const s=this.state;
+    updateUI(){
+      const s=this.state;
       const displayGridV = s.gridV;
       const displayGridF = s.gridF;
       const displayGenV = s.breaker === 'CLOSED' ? s.gridV : s.genV;
@@ -988,12 +991,15 @@ s.slipHz = s.breaker === 'CLOSED' ? 0 : (s.genF - s.gridF);
       this.els.breakerBrief.textContent = s.breaker; this.els.breakerBrief.className = 'value ' + (s.breaker==='CLOSED'?'status-closed':s.breaker==='TRIPPED'?'status-trip':'status-open');
       this.els.syncSub.textContent = 'Δf ' + Math.abs(s.slipHz).toFixed(3) + ' Hz · Δφ ' + Math.abs(this.wrapDeg(s.phaseDeg)).toFixed(1) + '°';
       this.els.powerBrief.textContent = Math.round(s.pKW) + ' kW'; this.els.currentSub.textContent = s.currentA.toFixed(0) + ' A · PF ' + s.pf.toFixed(2);
+
       const absDV = Math.abs(s.genV - s.gridV) * 1000, absDf = Math.abs(s.slipHz), absDp = Math.abs(this.wrapDeg(s.phaseDeg));
       this.els.kvSlip.textContent = s.slipHz.toFixed(3) + ' Hz'; this.els.kvPhase.textContent = this.wrapDeg(s.phaseDeg).toFixed(1) + '°'; this.els.kvQ.textContent = s.qMVAr.toFixed(2) + ' MVAr'; this.els.kvS.textContent = Math.round(s.sKVA) + ' kVA';
       this.els.kvDV.textContent = absDV.toFixed(0) + ' V'; this.els.kvDfAbs.textContent = absDf.toFixed(3) + ' Hz'; this.els.kvDpAbs.textContent = absDp.toFixed(1) + '°'; this.els.kvTemp.textContent = s.genTempC.toFixed(1) + ' °C';
+
       this.els.gridStateText.textContent = s.gridHealthy ? 'GRID HEALTHY' : (s.gridStarted ? 'WARMING UP' : 'DE-ENERGIZED'); this.els.gridStateText.className = s.gridHealthy ? 'status-online' : 'status-offline';
       this.els.genStateText.textContent = s.genStarted ? 'GEN ONLINE' : 'OFFLINE'; this.els.genStateText.className = s.genStarted ? 'status-online' : 'status-offline';
       this.els.breakerInline.textContent = '[ ' + s.breaker + ' ]'; this.els.breakerInline.className = s.breaker==='CLOSED'?'status-online':s.breaker==='TRIPPED'?'status-trip':'status-open';
+
       let ready = false, reason = 'Waiting for grid/gen';
       if(s.breaker === 'TRIPPED'){ reason = 'Breaker tripped'; }
       else if(!s.gridHealthy){ reason = 'Grid not healthy'; }
@@ -1006,39 +1012,42 @@ s.slipHz = s.breaker === 'CLOSED' ? 0 : (s.genF - s.gridF);
       this.els.syncReadyPill.textContent = s.breaker==='CLOSED' ? 'SYNCED' : ready ? 'SYNC READY' : (s.breaker==='TRIPPED' ? 'TRIPPED' : 'NOT READY');
       this.els.syncReadyPill.className = 'sync-pill ' + (s.breaker==='CLOSED' || ready ? 'ready' : s.breaker==='TRIPPED' ? 'trip' : 'wait');
       this.els.syncReason.textContent = s.breaker==='CLOSED' ? `Online · load ${Math.round(s.loadDemandKW)} kW · temp ${s.genTempC.toFixed(1)} °C` : reason;
+
       const markerPct = this.clamp(50 + this.wrapDeg(s.phaseDeg) / 90 * 50, 0, 100);
       this.els.syncBandMarker.style.left = `calc(${markerPct}% - 1px)`;
       this.els.syncLamp.className = 'lamp' + ((ready || s.breaker==='CLOSED') ? ' ready' : '');
-      const flowing = s.breaker==='CLOSED'; this.els.leftFlow.style.display = flowing ? 'block':'none'; this.els.rightFlow.style.display = flowing ? 'block':'none';
+
+      const flowing = s.breaker==='CLOSED';
+      this.els.leftFlow.style.display = flowing ? 'block':'none';
+      this.els.rightFlow.style.display = flowing ? 'block':'none';
+
       const mode = s.machine.mode;
-const modeLabel = mode.replace(/_/g, ' ');
+      let badgeClass = 'status-offline';
+      if (mode === MODE.OFFLINE) badgeClass = 'status-offline';
+      else if (mode === MODE.GRID_READY || mode === MODE.GEN_READY || mode === MODE.PARALLEL) badgeClass = 'status-online';
+      else if (mode === MODE.IDLE || mode === MODE.GRID_WARMUP || mode === MODE.GEN_STARTING || mode === MODE.SYNC_WINDOW || mode === MODE.BREAKER_CLOSING || mode === MODE.PAUSED) badgeClass = 'status-open';
+      else if (mode === MODE.TRIPPED) badgeClass = 'status-trip';
+      this.els.systemBadge.textContent = mode.replace(/_/g, ' ');
+      this.els.systemBadge.className = 'badge ' + badgeClass;
 
-let badgeClass = 'status-offline';
-
-if (mode === MODE.OFFLINE) badgeClass = 'status-offline';
-
-if (
-  mode === MODE.GRID_READY ||
-  mode === MODE.GEN_READY ||
-  mode === MODE.PARALLEL
-) badgeClass = 'status-online';
-
-if (
-  mode === MODE.IDLE ||
-  mode === MODE.GRID_WARMUP ||
-  mode === MODE.GEN_STARTING ||
-  mode === MODE.SYNC_WINDOW ||
-  mode === MODE.BREAKER_CLOSING ||
-  mode === MODE.PAUSED
-) badgeClass = 'status-open';
-
-if (mode === MODE.TRIPPED) badgeClass = 'status-trip';
-this.els.systemBadge.textContent = modeLabel;
-this.els.systemBadge.className = 'badge ' + badgeClass;
       this.els.clockText.textContent = new Date().toLocaleTimeString('en-US',{hour12:false}) + '.' + String(new Date().getMilliseconds()).padStart(3,'0');
+
+      // 2-layer guidance
+      this.els.guidancePanel.innerHTML = `
+        <div><span style="color:var(--gold)">NEXT ACTION → </span>${this.getNextAction()}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">${this.getGuidanceWhy()}</div>
+      `;
+      this.updateBreakerButton();
+
       this.updateTelemetryUI();
+      this.updateTrainingModeBadge();
     },
-    drawScope(){ const ctx=this.scopeCtx, w=this.els.scope.width, h=this.els.scope.height; const cx=w/2, cy=h/2, r=Math.min(w,h)*0.39; ctx.clearRect(0,0,w,h); ctx.fillStyle='#09111b'; ctx.fillRect(0,0,w,h);
+
+    drawScope(){
+      const ctx=this.scopeCtx, w=this.els.scope.width, h=this.els.scope.height;
+      const cx=w/2, cy=h/2, r=Math.min(w,h)*0.39;
+      ctx.clearRect(0,0,w,h);
+      ctx.fillStyle='#09111b'; ctx.fillRect(0,0,w,h);
       const ring = ctx.createRadialGradient(cx,cy,10,cx,cy,r+20); ring.addColorStop(0,'#101c2d'); ring.addColorStop(1,'#08101c'); ctx.fillStyle=ring; ctx.beginPath(); ctx.arc(cx,cy,r+18,0,Math.PI*2); ctx.fill();
       ctx.strokeStyle='#29405d'; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
       const syncGlow = this.clamp(1 - Math.abs(this.wrapDeg(this.state.phaseDeg))/20, 0, 1);
@@ -1049,16 +1058,34 @@ this.els.systemBadge.className = 'badge ' + badgeClass;
       ctx.fillStyle='#dce9f8'; ctx.beginPath(); ctx.arc(cx,cy,9,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#09111b'; ctx.beginPath(); ctx.arc(cx,cy,3,0,Math.PI*2); ctx.fill();
       ctx.fillStyle='#dce9f8'; ctx.font='800 16px sans-serif'; ctx.fillText(`${Math.abs(p).toFixed(1)}°`, cx, cy+r+30); ctx.font='12px sans-serif'; ctx.fillStyle='#96a6bc'; ctx.fillText(`Δf ${this.state.slipHz.toFixed(3)} Hz`, cx, cy+r+48);
     },
-    drawTrend(){ const ctx=this.trendCtx, c=this.els.trend, w=c.width, h=c.height; ctx.clearRect(0,0,w,h); ctx.fillStyle='#08101c'; ctx.fillRect(0,0,w,h); ctx.strokeStyle='rgba(255,255,255,.08)'; ctx.lineWidth=1; for(let i=0;i<6;i++){ const y=10+i*(h-20)/5; ctx.beginPath(); ctx.moveTo(40,y); ctx.lineTo(w-10,y); ctx.stroke(); }
+
+    drawTrend(){
+      const ctx=this.trendCtx, c=this.els.trend, w=c.width, h=c.height;
+      ctx.clearRect(0,0,w,h); ctx.fillStyle='#08101c'; ctx.fillRect(0,0,w,h);
+      ctx.strokeStyle='rgba(255,255,255,.08)'; ctx.lineWidth=1; for(let i=0;i<6;i++){ const y=10+i*(h-20)/5; ctx.beginPath(); ctx.moveTo(40,y); ctx.lineTo(w-10,y); ctx.stroke(); }
       ctx.strokeStyle='rgba(255,255,255,.06)'; for(let i=0;i<10;i++){ const x=40+i*(w-50)/9; ctx.beginPath(); ctx.moveTo(x,10); ctx.lineTo(x,h-10); ctx.stroke(); }
-      const hist=this.state.history; if(hist.length<2) return; const maxI=Math.max(500,...hist.map(p=>p.currentA)); const maxKW=Math.max(5000,...hist.map(p=>Math.abs(p.pKW))); const xAt=i=>40 + i*(w-60)/(Math.max(1,hist.length-1));
+      const hist=this.state.history; if(hist.length<2) return;
+      const maxI=Math.max(500,...hist.map(p=>p.currentA)); const maxKW=Math.max(5000,...hist.map(p=>Math.abs(p.pKW)));
+      const xAt=i=>40 + i*(w-60)/(Math.max(1,hist.length-1));
       const draw=(arr,color,maxVal)=>{ ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath(); arr.forEach((v,i)=>{ const x=xAt(i), y=h-14 - (v/maxVal)*(h-28); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke(); };
       draw(hist.map(p=>p.gridF-59.8),'#59d7ff',0.6); draw(hist.map(p=>p.genF-59.8),'#f6c453',0.6); draw(hist.map(p=>p.currentA),'#31d28a',maxI); draw(hist.map(p=>Math.abs(p.pKW)),'#ff6b6b',maxKW);
       ctx.fillStyle='#96a6bc'; ctx.font='11px sans-serif'; ctx.fillText('cyan: grid Hz offset', 48, 16); ctx.fillText('gold: gen Hz offset', 200, 16); ctx.fillText('green: amps', 360, 16); ctx.fillText('red: |kW|', 460, 16);
     },
-    tick(now){ const dt=Math.min(0.25,(now-this.state.lastTick)/1000 || 0.016); this.state.lastTick=now; if(now % 200 < 17) this.state.telemetryFreq = 60 + Math.sin(now/180000)*0.012 + (this.state.chaos ? (Math.random()-0.5)*0.004 : 0); this.updatePhysics(dt); this.pushHistory(); this.updateUI(); this.drawScope(); if(document.getElementById('analysis').classList.contains('active')) this.drawTrend(); requestAnimationFrame(this.tick.bind(this)); }
+
+    tick(now){
+      const dt=Math.min(0.25,(now-this.state.lastTick)/1000 || 0.016); this.state.lastTick=now;
+      if(now % 200 < 17) this.state.telemetryFreq = 60 + Math.sin(now/180000)*0.012 + (this.state.chaos ? (Math.random()-0.5)*0.004 : 0);
+      this.updatePhysics(dt);
+      this.pushHistory();
+      this.updateUI();
+      this.drawScope();
+      if(document.getElementById('analysis').classList.contains('active')) this.drawTrend();
+      requestAnimationFrame(this.tick.bind(this));
+    }
   };
-  window.Phoenix = app; app.init();
+
+  window.Phoenix = app; 
+  app.init();
 })();
 </script>
 </body>
