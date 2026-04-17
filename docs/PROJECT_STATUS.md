@@ -1,9 +1,9 @@
 # Phoenix Platform Progress
 
 ## Runtime Authority
-- Canonical runtime file: `index.html`
-- Locked rollback baseline: `phoenix_v8_baseline_locked.html`
-- Active development sandbox: `phoenix_v9_dev.html`
+ **Canonical runtime file**: `index.html`
+- **Locked baseline**: `phoenix_v8_baseline_locked.html`
+- **Development sandbox**: `phoenix_v9_dev.html` (this build)
 
 ## Current Runtime Snapshot
 `index.html` is the live single-file v8 runtime and currently includes:
@@ -29,6 +29,12 @@
 - Rewired operator controls through dispatch/event flow
 - Physics hooks that emit machine events
 - Closed-state display truth patch in `updateUI()`
+- phoenix_v9_dev.html` now includes:
+- Event‑driven sync window transitions via `SYNC_READY` and `SYNC_LOST`.
+- Enhanced guidance panel with mode‑specific explanations.
+- All v9.5 features (machine state/event scaffolding, deterministic reset, dispatch‑driven controls, physics hooks) preserved.
+- No promotion to runtime authority yet; further validation required.
+
 
 ## Current Phase
 - [x] Repo live on GitHub Pages
@@ -50,6 +56,7 @@
 - `index.html` remains the shipped runtime source of truth.
 - Experimental work may happen in `phoenix_v9_dev.html`.
 - No behavior is considered released until it is validated and promoted into `index.html`.
+-  Development continues in `phoenix_v9_dev.html` until validation criteria are met.
 
 ## Notes
 - Keep the single-file architecture until function checks pass.
