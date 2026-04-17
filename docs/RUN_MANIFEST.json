@@ -1,22 +1,18 @@
 {
-  "task": "V9.1 Sprint Step 2 - closed-state display truth",
+  "task": "V9.2 Sprint Step 3 - event-driven sync transitions & guidance improvements",
   "runtime_authority": "index.html",
   "development_authority": "phoenix_v9_dev.html",
-  "status": "passed",
+  "status": "pending",
   "validated_behaviors": [
-    "top Grid and Generator voltage match when breaker is CLOSED",
-    "top Grid and Generator frequency match when breaker is CLOSED",
-    "parallel state badge displays correctly",
-    "breaker close into parallel remains intact",
-    "load raise remains intact through 9000 kW",
-    "SOE logging remains intact",
-    "mobile rendering remains usable"
+    "Maintained v9.5 operator training shell and all simulator features",
+    "Added explicit SYNC_READY/SYNC_LOST transitions for deterministic state machine",
+    "Enhanced operator guidance panel with mode-specific rationale"
   ],
   "evidence": [
-    "mobile screenshots showing PARALLEL with matching 13800 V / 60.004-60.008 Hz",
-    "SOE logs showing BREAKER_CLOSING -> PARALLEL transition",
-    "load raise logs through 9000 kW"
+    "Code changes in transition() remove ctx.syncSafe gating and add event-driven sync handling",
+    "Guidance panel now outputs mode-specific explanations across OFFLINE→PARALLEL states",
+    "All existing physics thresholds and UI panels remain unchanged"
   ],
-  "next_step": "Step 3 - state-aware breaker button labels",
-  "date": "2026-04-16"
+  "next_step": "Validate event-driven transitions and begin integrating scenario runner logic",
+  "date": "2026-04-17"
 }
