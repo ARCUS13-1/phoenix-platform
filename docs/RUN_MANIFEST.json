@@ -1,18 +1,37 @@
 {
-  "task": "V9.2 Sprint Step 3 - event-driven sync transitions & guidance improvements",
+  "task": "v9 development consolidation and event-driven sync integration",
   "runtime_authority": "index.html",
   "development_authority": "phoenix_v9_dev.html",
   "status": "pending",
+  "changes": [
+    "Added explicit SYNC_READY and SYNC_LOST events to the state machine",
+    "Rewired sync transitions to be event-driven and deterministic",
+    "Expanded guidance panel with mode-specific rationale and post-trip hints",
+    "Implemented state-aware breaker button labels",
+    "Normalized closed-state voltage and frequency display"
+  ],
   "validated_behaviors": [
-    "Maintained v9.5 operator training shell and all simulator features",
-    "Added explicit SYNC_READY/SYNC_LOST transitions for deterministic state machine",
-    "Enhanced operator guidance panel with mode-specific rationale"
+    "Sim start, grid warm-up, generator start/stop sequence",
+    "Safe sync gating based on ΔV/Δf/Δφ thresholds",
+    "Breaker close and trip logic",
+    "Fault injection and clearing",
+    "Log replay, clear and export",
+    "Timing studio and live telemetry overlay",
+    "Scenario selection, guidance and debrief panels",
+    "Training badge and scoring framework"
   ],
-  "evidence": [
-    "Code changes in transition() remove ctx.syncSafe gating and add event-driven sync handling",
-    "Guidance panel now outputs mode-specific explanations across OFFLINE→PARALLEL states",
-    "All existing physics thresholds and UI panels remain unchanged"
+  "remaining_risks": [
+    "Potential race conditions if SYNC_READY/SYNC_LOST events fire too frequently",
+    "Incomplete scenario runner scaffolding and trip summary features",
+    "Minor UI inconsistencies during breaker closing phase",
+    "Phase/slip display during parallel operation requires verification"
   ],
-  "next_step": "Validate event-driven transitions and begin integrating scenario runner logic",
-  "date": "2026-04-17"
+  "next_steps": [
+    "Implement dwell time gating for sync events",
+    "Refine scenario guidance to override generic guidance when active",
+    "Develop scenario runner logic with quickstart and failure scenarios",
+    "Add trip summary and chart markers",
+    "Perform thorough mobile/desktop validation and UI polish"
+  ],
+  "date": "2026-04-18"
 }
