@@ -21,6 +21,9 @@
 - Physics event emission for grid healthy, sync ready/lost, and breaker close confirmation
 - Explicit `SYNC_READY` and `SYNC_LOST` event transitions in the v9 state machine. GEN_STARTING and GEN_READY now enter the sync window only via a `SYNC_READY` event and exit via `SYNC_LOST`, providing deterministic and readable flow.
 - Mode‑specific operator guidance text. The guidance panel now explains the rationale for each step, including grid warm‑up, generator starting, alignment procedures, breaker closing, parallel operation, trip recovery, and pause states.
+- Introduced explicit `SYNC_READY` and `SYNC_LOST` events.  Generator modes now enter the sync window only via `SYNC_READY` and return to `GEN_READY` via `SYNC_LOST`.  This removes continuous context checks and provides deterministic behavior.
+- Added detailed mode‑specific guidance to the operator guidance panel explaining the rationale for each action (grid warm‑up, generator starting, alignment, breaker closing, parallel operation, trip recovery and pause).
+- Added state‑aware breaker button labels: `RESET BREAKER` when tripped, `OPEN BREAKER` when closed, `CLOSE BREAKER` when sync conditions are met, and `CLOSE BLOCKED` when not ready.
   
 ### Changed
 - Rewired core operator controls in `phoenix_v9_dev.html` to route through dispatch/event transitions
@@ -31,6 +34,10 @@
 -  Removed direct `ctx.syncSafe` checks from generator modes in `transition()`; state changes into/out of the sync window are now driven exclusively by events.
 - Simplified the sync window’s exit logic: leaving the window is triggered by `SYNC_LOST`, preventing oscillation and improving clarity.
 - Expanded guidance panel copy to give operators clearer instructions in each mode and to highlight safe sync thresholds.
+- Reworked `transition()` to remove direct `ctx.syncSafe` checks; sync transitions are now event‑driven.
+- Updated `updatePhysics(dt)` to emit `SYNC_READY` and `SYNC_LOST` events instead of updating machine state directly.
+- Updated `updateUI()` to normalize generator voltage and frequency to grid values when the breaker is closed.
+- Enhanced guidance panel copy for clarity and added post‑trip instructions.
 
 ### Validated
 - Startup sequence remains intact in V9 dev
@@ -46,18 +53,15 @@
 - Load raise remains intact through 9000 kW
 - SOE logging/export remains intact
 - All existing v9.5 features remain functional: sim start, grid warm‑up, generator start/stop, governor/AVR sliders, synchroscope, sync band and lamp, breaker controls with trip/reset, fault injection/clear, load raise, analysis logging, timing studio, telemetry overlay, scenario selector, guidance/debrief panels, training badge, and scoring path.
+- Confirmed sim start, grid warm‑up, generator start/stop, sync window entry, breaker closing, load raise, fault injection/clear, log replay/export, timing studio, telemetry overlay, scenario selection, guidance/debrief panels, training badge and scoring features remain functional in the development file.
 
 ### Pending Validation
-- Closed-state display truth patch in `updateUI()`
-- State-aware breaker button labeling
-- Scenario runner scaffolding
-- Trip summary and chart markers
-- Confirm event‑based sync transitions do not introduce race conditions under timing stress.
-- Review updated guidance text for clarity and usefulness across desktop and mobile layouts.
-- Ensure scenario scoring and logging logic remain correct with the new state transitions.
+- Implement dwell time gating for `SYNC_READY`/`SYNC_LOST` events to avoid race conditions.
+- Refine scenario guidance to override generic guidance when active.
+- Implement scenario runner scaffolding, trip summary and chart markers.
+- Validate closed‑state slip and phase display; ensure they show zero in parallel mode.
   
 ### Next
-- State-aware breaker button labels
 - Scenario scaffolding
 - Trip summary and chart markers
 
