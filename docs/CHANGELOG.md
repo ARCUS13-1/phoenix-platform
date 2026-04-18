@@ -8,6 +8,9 @@
 - Fine-trim governor and AVR nudge controls
 - State-aware breaker labels including closing-state feedback
 - Scenario-specific failure messaging
+- `runFunctionChecks()` dev helper to perform internal structural checks and report results without mutating state.
+- Scope‑status indicator near the synchroscope to show OFFLINE / TRACKING / SYNC WINDOW / PARALLEL / TRIPPED derived from the state machine.
+- Enhanced overcurrent scenario stable‑window visibility with progress and injection status in the scenario state panel.
 
 ### Changed
 - `loadScenario()` now uses state-aware sequencing instead of timer-driven drill flow
@@ -15,6 +18,9 @@
 - `updatePhysics()` now gates sync readiness/loss with dwell timing
 - `updateUI()` normalizes generator display values to grid values while closed
 - Guidance panel now better reflects machine and drill context
+- Updated scenario state panel to display the overcurrent dwell timer with status suffixes: `(await inj)`, `(counting)` or `(reset)`.
+- Extended the element cache to include `scopeStatus`.
+- Minor indentation and comment alignment for readability.
 
 ### Fixed
 - Overcurrent drill no longer injects before synchronization
@@ -22,5 +28,4 @@
 - Breaker close command feedback improved with `CLOSING…` state
 - Marker indices persist correctly through history trimming
 
-### Known Remaining Issue
-- OVERCURRENT drill is still not fully recoverable because fault current is hard-forced to a trip level after closure and needs to be converted into a controllable overload model.
+
