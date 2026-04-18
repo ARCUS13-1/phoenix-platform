@@ -1073,19 +1073,29 @@
     },
 
     updateUI(){
-      const s=this.state;
       const displayGridV = s.gridV;
       const displayGridF = s.gridF;
       const displayGenV = s.breaker === 'CLOSED' ? s.gridV : s.genV;
       const displayGenF = s.breaker === 'CLOSED' ? s.gridF : s.genF;
 
-      this.els.gridBrief.textContent = (displayGridV*1000).toFixed(0) + ' V';
+      const displaySlipHz = s.breaker === 'CLOSED' ? 0 : s.slipHz;
+      const displayPhaseDeg = s.breaker === 'CLOSED' ? 0 : this.wrapDeg(s.phaseDeg);
+
+      const absDV = Math.abs(s.genV - s.gridV) * 1000;
+      const absDf = s.breaker === 'CLOSED' ? 0 : Math.abs(s.slipHz);
+      const absDp = s.breaker === 'CLOSED' ? 0 : Math.abs(this.wrapDeg(s.phaseDeg));
+
+      this.els.gridBrief.textContent = (displayGridV * 1000).toFixed(0) + ' V';
       this.els.gridSub.textContent = displayGridF.toFixed(3) + ' Hz';
-      this.els.genBrief.textContent = (displayGenV*1000).toFixed(0) + ' V';
+      this.els.genBrief.textContent = (displayGenV * 1000).toFixed(0) + ' V';
       this.els.genSub.textContent = displayGenF.toFixed(3) + ' Hz';
 
       this.els.breakerBrief.textContent = s.breaker; this.els.breakerBrief.className = 'value ' + (s.breaker==='CLOSED'?'status-closed':s.breaker==='TRIPPED'?'status-trip':'status-open');
-      this.els.syncSub.textContent = 'Δf ' + Math.abs(s.slipHz).toFixed(3) + ' Hz · Δφ ' + Math.abs(this.wrapDeg(s.phaseDeg)).toFixed(1) + '°';
+      this.els.syncSub.textContent = 'Δf ' + absDf.toFixed(3) + ' Hz · Δφ ' + absDp.toFixed(1) + '°';
+      this.els.kvSlip.textContent = displaySlipHz.toFixed(3) + ' Hz';
+      this.els.kvPhase.textContent = displayPhaseDeg.toFixed(1) + '°';
+      this.els.kvDfAbs.textContent = absDf.toFixed(3) + ' Hz';
+      this.els.kvDpAbs.textContent = absDp.toFixed(1) + '°';
       this.els.powerBrief.textContent = Math.round(s.pKW) + ' kW'; this.els.currentSub.textContent = s.currentA.toFixed(0) + ' A · PF ' + s.pf.toFixed(2);
 
       const absDV = Math.abs(s.genV - s.gridV) * 1000, absDf = Math.abs(s.slipHz), absDp = Math.abs(this.wrapDeg(s.phaseDeg));
