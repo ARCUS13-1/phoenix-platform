@@ -633,7 +633,7 @@
       requestAnimationFrame(this.tick.bind(this));
     },
     cache(){
-      const ids = ['systemBadge','gridBrief','gridSub','genBrief','genSub','breakerBrief','syncSub','powerBrief','currentSub','govSlider','avrSlider','govRead','avrRead','scope','trend','gridStateText','genStateText','breakerInline','leftFlow','rightFlow','kvSlip','kvPhase','kvQ','kvS','kvDV','kvDfAbs','kvDpAbs','kvTemp','syncBandMarker','syncLamp','syncReadyPill','syncReason','log','clockText','timingInput','timingView','timingPreset','teleMode','teleSource','teleFreq','teleLoad','teleUpdated','guidancePanel','scenarioSelect','btnLoadScenario','debriefPanel','debriefContent','trainingModeBadge','scStatus','scArmed','scInjected','scResult','scElapsed','scType'];
+      const ids = ['systemBadge','gridBrief','gridSub','genBrief','genSub','breakerBrief','syncSub','powerBrief','currentSub','govSlider','avrSlider','govRead','avrRead','scope','trend','gridStateText','genStateText','breakerInline','leftFlow','rightFlow','kvSlip','kvPhase','kvQ','kvS','kvDV','kvDfAbs','kvDpAbs','kvTemp','syncBandMarker','syncLamp','syncReadyPill','syncReason','log','clockText','timingInput','timingView','timingPreset','teleMode','teleSource','teleFreq','teleLoad','teleUpdated','guidancePanel','scenarioSelect','btnLoadScenario','debriefPanel','debriefContent','trainingModeBadge','scStatus','scArmed','scInjected','scResult','scElapsed','scType','scStable'];
       ids.forEach(id=>this.els[id]=document.getElementById(id));
       this.scopeCtx = this.els.scope.getContext('2d');
       this.trendCtx = this.els.trend.getContext('2d');
