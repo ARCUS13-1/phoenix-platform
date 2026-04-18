@@ -68,6 +68,12 @@
     .log{max-height:300px;overflow:auto;background:#050b12;border:1px solid var(--line);border-radius:12px;padding:8px;font-family:ui-monospace, SFMono-Regular, Menlo, monospace;font-size:11px;line-height:1.4}
     .log-entry{padding:6px 8px;border-left:3px solid #3a5372;margin-bottom:6px;background:rgba(255,255,255,.02);border-radius:6px}
     .log-entry.trip{border-left-color:var(--red);color:#ffd8d8}.log-entry.good{border-left-color:var(--green)}.log-entry.warn{border-left-color:var(--gold)}
+    /* Additional log levels for better event distinction */
+    .log-entry.fault{border-left-color:var(--gold);color:#ffecb3}
+    .log-entry.clear{border-left-color:var(--green);color:#d1ffd5}
+    .log-entry.closecmd{border-left-color:var(--purple);color:#e5d6ff}
+    .log-entry.closed{border-left-color:var(--cyan);color:#d6f5ff}
+    .log-entry.scenario{border-left-color:var(--purple);color:#e5d6ff}
     .timing-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
     .field, select, textarea, input[type=number]{width:100%;background:#09111d;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px}
     textarea{min-height:110px;resize:vertical}
@@ -86,7 +92,7 @@
     .sync-pill.ready{color:var(--green);border-color:rgba(49,210,138,.4)}
     .sync-pill.wait{color:var(--gold);border-color:rgba(246,196,83,.4)}
     .sync-pill.trip{color:var(--red);border-color:rgba(255,107,107,.45)}
-    .scope-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.scope-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
     .guidance{font-size:13px;font-weight:700;color:var(--cyan);padding:12px;border:1px solid rgba(89,215,255,.3);border-radius:12px;background:rgba(89,215,255,.08);box-shadow:0 0 12px rgba(89,215,255,.2)}
     .scenario-row{display:flex;gap:8px;align-items:center;margin-top:8px}
     .debrief{background:rgba(49,210,138,.1);border:1px solid rgba(49,210,138,.4);border-radius:12px;padding:12px;margin-top:8px;font-size:13px;line-height:1.45}
@@ -165,6 +171,12 @@
           <div id="debriefContent" class="debrief"></div>
         </section>
 
+        <!-- Trip summary panel, hidden by default -->
+        <section class="card panel" id="tripPanel" style="display:none">
+          <h2>TRIP SUMMARY</h2>
+          <div id="tripContent" class="debrief"></div>
+        </section>
+
         <section class="card panel">
           <h2>Governor / AVR</h2>
           <div class="stack">
@@ -210,6 +222,18 @@
             <button class="btn good" id="btnClearFaults">CLEAR FAULTS</button>
           </div>
         </section>
+        <!-- Scenario state readout: shows status, arming, injection, result and scenario type -->
+        <section class="card panel" id="scenarioStatePanel">
+          <h2>Scenario State</h2>
+          <div class="kv">
+            <div class="tiny"><div class="k">Status</div><div id="scStatus" class="v">INACTIVE</div></div>
+            <div class="tiny"><div class="k">Armed</div><div id="scArmed" class="v">NO</div></div>
+            <div class="tiny"><div class="k">Injected</div><div id="scInjected" class="v">NO</div></div>
+            <div class="tiny"><div class="k">Result</div><div id="scResult" class="v">—</div></div>
+            <div class="tiny"><div class="k">Elapsed</div><div id="scElapsed" class="v">0.0 s</div></div>
+            <div class="tiny"><div class="k">Type</div><div id="scType" class="v">—</div></div>
+          </div>
+        </section>
       </div>
 
       <div class="stack">
@@ -240,6 +264,8 @@
               <button class="btn primary" id="btnToggleBreakerDock">SYNC CLOSE</button>
               <button class="btn" id="btnAutoMatchDock">AUTO MATCH</button>
               <button class="btn" id="btnRaiseLoad">RAISE LOAD</button>
+              <!-- Added lower load control for operator recovery -->
+              <button class="btn" id="btnLowerLoad">LOWER LOAD</button>
             </div>
           </div>
         </section>
@@ -361,42 +387,112 @@
       successCondition: (s) => s.breaker === 'CLOSED' && s.scenario.unsafeAttempts === 0 && s.scenario.trips === 0,
       failureCondition: (s) => s.scenario.trips > 0,
       scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, cleanState: true },
-      debriefTemplate: (score, s) => `Clean sync achieved in ${s.syncTime.toFixed(1)} s. No faults injected. Excellent procedural discipline.`
+      debriefTemplate: (score, s) => `Clean sync achieved in ${s.syncTime.toFixed(1)} s. No faults injected. Excellent procedural discipline.`,
+      // Scenario-specific failure message for quickstart
+      failTemplate: (s, reason) => `Scenario failed. Unsafe sync attempt or trip occurred before closing. Practice safe synchronizing by keeping ΔV < 500 V, Δf < 0.03 Hz and Δφ < 5°. Review the trip summary and log before retrying.`
+      ,
+      // State-aware sequencing: no auto start of generator, no fault injection
+      armCondition: () => false,
+      injectCondition: () => false,
+      faultIds: [],
+      maxDurationSec: 180
+    ,
+      // Scenario philosophy: clean sync with no disturbances
+      type: 'CLEAN_SYNC'
     },
     vsag: {
-      objective: 'Handle V-SAG fault and still achieve safe sync',
+      objective: 'Operate through V-SAG fault and achieve safe sync',
       successCondition: (s) => s.breaker === 'CLOSED' && s.faults.has('V-SAG') && s.genV > 13.0,
       failureCondition: (s) => s.scenario.trips > 0,
       scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, faultRecovery: true },
-      debriefTemplate: (score, s) => `V-SAG managed and safe sync completed. Good AVR response.`
+      debriefTemplate: (score, s) => `V-SAG managed and safe sync completed. Good AVR response.`,
+      // Scenario-specific failure message for V-SAG
+      failTemplate: (s, reason) => `Voltage sag scenario failed. Restore generator voltage above 13.0 kV and keep ΔV within safe limits before closing. Review the trip summary for details.`
+      ,
+      // Fault should be injected pre-sync once the grid is healthy
+      armCondition: () => false,
+      injectCondition: (s) => s.gridHealthy && !s.genStarted,
+      faultIds: ['V-SAG'],
+      maxDurationSec: 180
+    ,
+      // Scenario philosophy: operate through the fault — do not clear V-SAG
+      type: 'OPERATE_THROUGH'
     },
     phaseerr: {
-      objective: 'Recover from PHASE-ERR and close only when safe',
+      objective: 'Operate through PHASE-ERR fault and close only when safe',
       successCondition: (s) => s.breaker === 'CLOSED' && s.faults.has('PHASE-ERR') && Math.abs(s.phaseDeg) < 3,
       failureCondition: (s) => s.scenario.trips > 0,
       scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, faultRecovery: true },
-      debriefTemplate: (score, s) => `PHASE-ERR recovered. Safe sync completed after angle stabilization.`
+      debriefTemplate: (score, s) => `PHASE-ERR recovered. Safe sync completed after angle stabilization.`,
+      // Scenario-specific failure message for PHASE-ERR
+      failTemplate: (s, reason) => `Phase error scenario failed. Adjust frequency and phase angle to align before closing. Review the trip summary and log to understand the slip at trip.`
+      ,
+      // Automatically start the generator once the grid is healthy; inject fault after generator is running but before sync
+      armCondition: (s) => s.gridHealthy && !s.genStarted,
+      injectCondition: (s) => s.genStarted,
+      faultIds: ['PHASE-ERR'],
+      maxDurationSec: 180
+    ,
+      // Scenario philosophy: operate through the fault — do not clear PHASE-ERR
+      type: 'OPERATE_THROUGH'
     },
     overcurrent: {
-      objective: 'Manage OVERCURRENT while synchronizing and avoid trip',
+      objective: 'Operate through OVERCURRENT by managing load and droop and avoid trip',
       successCondition: (s) => s.breaker === 'CLOSED' && s.faults.has('OVERCURRENT') && s.currentA < 1400,
       failureCondition: (s) => s.scenario.trips > 0,
       scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, faultRecovery: true },
-      debriefTemplate: (score, s) => `OVERCURRENT managed without trip. Excellent load and protection awareness.`
+      debriefTemplate: (score, s) => `OVERCURRENT managed without trip. Excellent load and protection awareness.`,
+      // Scenario-specific failure message for OVERCURRENT
+      failTemplate: (s, reason) => `Overcurrent scenario failed. The generator current exceeded safe limits. Reduce load demand or raise governor setpoint before attempting closure again. Review the trip summary.`
+      ,
+      // Automatically start the generator once the grid is healthy; only inject the overcurrent fault after closure (parallel mode)
+      armCondition: (s) => s.gridHealthy && !s.genStarted,
+      injectCondition: (s) => s.breaker === 'CLOSED',
+      faultIds: ['OVERCURRENT'],
+      maxDurationSec: 180
+    ,
+      // Scenario philosophy: operate through the fault — overload management
+      type: 'OPERATE_THROUGH'
     },
     stuck: {
-      objective: 'Recover from BRKR-STUCK fault and complete safe sync',
-      successCondition: (s) => s.breaker === 'CLOSED' && s.faults.has('BRKR-STUCK'),
+      objective: 'Diagnose and clear BRKR-STUCK fault then complete safe sync',
+      // Success only when the breaker is closed and the BRKR-STUCK fault has been cleared by the operator. If the fault remains active, closure is blocked.
+      successCondition: (s) => s.breaker === 'CLOSED' && !s.faults.has('BRKR-STUCK'),
       failureCondition: (s) => s.scenario.trips > 0,
       scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, faultRecovery: true },
-      debriefTemplate: (score, s) => `BRKR-STUCK recognized and recovered. Safe sync completed.`
+      debriefTemplate: (score, s) => `BRKR-STUCK recognized and recovered. Safe sync completed.`,
+      // Scenario-specific failure message for BRKR-STUCK
+      failTemplate: (s, reason) => `Breaker stuck scenario failed. Clear the BRKR-STUCK fault and reset the breaker before attempting closure.`,
+      // Inject the breaker-stuck fault as soon as the grid becomes healthy; generator is started manually by the operator
+      armCondition: () => false,
+      injectCondition: (s) => s.gridHealthy && !s.genStarted,
+      faultIds: ['BRKR-STUCK'],
+      maxDurationSec: 180
+    ,
+      // Scenario philosophy: diagnose and clear the fault before synchronising
+      type: 'CLEAR_RECOVER'
     },
     combined: {
-      objective: 'Handle simultaneous V-SAG and PHASE-ERR faults',
-      successCondition: (s) => s.breaker === 'CLOSED' && s.faults.has('V-SAG') && s.faults.has('PHASE-ERR') && Math.abs(s.phaseDeg) < 4,
+      // Operate‑through simultaneous V‑SAG and PHASE‑ERR. The generator must be raised
+      // above 13 kV and the phase slip kept below 4° before closing. Both faults remain
+      // active during the sync. This reinforces the need to raise voltage and trim
+      // governor speed concurrently. See comments near SCENARIOS for philosophy details.
+      objective: 'Operate through simultaneous V-SAG and PHASE-ERR faults: raise voltage above 13.0 kV and align angle < 4° before closing',
+      successCondition: (s) => s.breaker === 'CLOSED' && s.faults.has('V-SAG') && s.faults.has('PHASE-ERR') && s.genV > 13.0 && Math.abs(s.phaseDeg) < 4,
       failureCondition: (s) => s.scenario.trips > 0,
       scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, faultRecovery: true },
-      debriefTemplate: (score, s) => `Combined faults managed. Safe sync completed under stress.`
+      debriefTemplate: (score, s) => `Combined faults managed. Safe sync completed under stress.`,
+      // Scenario-specific failure message for combined faults
+      failTemplate: (s, reason) => `Combined fault scenario failed. Both voltage and phase faults must be kept within safe limits before closing (raise voltage and trim speed/angle). Review the trip summary to identify which limit was exceeded.`
+      ,
+      // Inject both V-SAG and PHASE-ERR faults once the grid is healthy and before the generator is started
+      armCondition: () => false,
+      injectCondition: (s) => s.gridHealthy && !s.genStarted,
+      faultIds: ['V-SAG','PHASE-ERR'],
+      maxDurationSec: 180
+    ,
+      // Scenario philosophy: operate through simultaneous faults
+      type: 'OPERATE_THROUGH'
     }
   };
 
@@ -421,7 +517,17 @@
       scenario: null,
       lastScore: 0,
       bestScore: {},
-      trainingMode: 'FREE RUN'
+      trainingMode: 'FREE RUN',
+      // markers array for trend-chart event markers
+      markers: [],
+      // last trip reason captured for debrief
+      lastTripReason: '',
+      // snapshot of conditions at last trip (dv, df, dphi, current, faults, scenario)
+      tripSnapshot: null
+      ,
+      // dwell timers for sync gating (seconds)
+      syncReadyTimer: 0,
+      syncLostTimer: 0
     };
   }
 
@@ -502,10 +608,31 @@
       this.applyPreset('sync');
       this.refreshTelemetry();
       this.log('Phoenix v9.5 Operator Training Platform initialized.', 'good');
+      // Perform scenario validation on init for developers. Outputs to console and returns a summary string.
+      if(typeof this.validateScenarios === 'function') {
+        try {
+          const summary = this.validateScenarios();
+          // Store last validation summary for access via console
+          this.state.lastValidation = summary;
+        } catch (e) {
+          console.error('Scenario validation error:', e);
+        }
+      }
+      // Generate a high‑level validation summary for each scenario. This provides developers
+      // with start/success/fail logic paths and guidance expectations. Store result for
+      // later retrieval and log to console. Only available in dev builds.
+      if(typeof this.generateValidationSummary === 'function'){
+        try{
+          const detail = this.generateValidationSummary();
+          this.state.validationReport = detail;
+        } catch(e){
+          console.error('Scenario summary error:', e);
+        }
+      }
       requestAnimationFrame(this.tick.bind(this));
     },
     cache(){
-      const ids = ['systemBadge','gridBrief','gridSub','genBrief','genSub','breakerBrief','syncSub','powerBrief','currentSub','govSlider','avrSlider','govRead','avrRead','scope','trend','gridStateText','genStateText','breakerInline','leftFlow','rightFlow','kvSlip','kvPhase','kvQ','kvS','kvDV','kvDfAbs','kvDpAbs','kvTemp','syncBandMarker','syncLamp','syncReadyPill','syncReason','log','clockText','timingInput','timingView','timingPreset','teleMode','teleSource','teleFreq','teleLoad','teleUpdated','guidancePanel','scenarioSelect','btnLoadScenario','debriefPanel','debriefContent','trainingModeBadge'];
+      const ids = ['systemBadge','gridBrief','gridSub','genBrief','genSub','breakerBrief','syncSub','powerBrief','currentSub','govSlider','avrSlider','govRead','avrRead','scope','trend','gridStateText','genStateText','breakerInline','leftFlow','rightFlow','kvSlip','kvPhase','kvQ','kvS','kvDV','kvDfAbs','kvDpAbs','kvTemp','syncBandMarker','syncLamp','syncReadyPill','syncReason','log','clockText','timingInput','timingView','timingPreset','teleMode','teleSource','teleFreq','teleLoad','teleUpdated','guidancePanel','scenarioSelect','btnLoadScenario','debriefPanel','debriefContent','trainingModeBadge','scStatus','scArmed','scInjected','scResult','scElapsed','scType'];
       ids.forEach(id=>this.els[id]=document.getElementById(id));
       this.scopeCtx = this.els.scope.getContext('2d');
       this.trendCtx = this.els.trend.getContext('2d');
@@ -531,7 +658,7 @@
       const on = (id, fn)=>document.getElementById(id).addEventListener('click', fn);
       on('btnSimStart', ()=>this.startSim()); on('btnGridStart', ()=>this.startGrid()); on('btnGenStart', ()=>this.startGen()); on('btnGenStop', ()=>this.stopGen());
       on('btnPause', ()=>this.togglePause()); on('btnReset', ()=>this.resetAll()); on('btnToggleBreaker', ()=>this.toggleBreakerCommand()); on('btnToggleBreakerDock', ()=>this.toggleBreakerCommand()); on('btnTrip', ()=>this.tripBreaker('Manual trip command'));
-      on('btnResetBreaker', ()=>this.resetBreaker()); on('btnAutoMatch', ()=>this.toggleAutoMatch()); on('btnAutoMatchDock', ()=>this.toggleAutoMatch()); on('btnRaiseLoad', ()=>this.raiseLoad()); on('btnChaos', ()=>this.toggleChaos()); on('btnExport', ()=>this.exportLogs());
+      on('btnResetBreaker', ()=>this.resetBreaker()); on('btnAutoMatch', ()=>this.toggleAutoMatch()); on('btnAutoMatchDock', ()=>this.toggleAutoMatch()); on('btnRaiseLoad', ()=>this.raiseLoad()); on('btnLowerLoad', ()=>this.lowerLoad()); on('btnChaos', ()=>this.toggleChaos()); on('btnExport', ()=>this.exportLogs());
       on('btnClearFaults', ()=>this.clearFaults()); on('btnReplay', ()=>this.replayLogs()); on('btnClearLog', ()=>this.clearLogs()); on('btnLoadPreset', ()=>this.applyPreset(this.els.timingPreset.value)); on('btnRenderTiming', ()=>this.renderTiming()); on('btnRefreshTelemetry', ()=>this.refreshTelemetry());
       on('btnLoadScenario', ()=>this.loadScenario());
       this.els.govSlider.addEventListener('input', e=>{ this.state.govSet = parseFloat(e.target.value); this.els.govRead.textContent = this.state.govSet.toFixed(2)+' Hz'; });
@@ -638,6 +765,150 @@
       }
     },
 
+    /**
+     * updateScenarioStatePanel()
+     *
+     * Update the compact scenario state readout displayed in the UI. This shows whether a drill is active,
+     * whether the arming/injection conditions have been met, whether the drill has succeeded or failed,
+     * the elapsed time since the scenario started, and the scenario philosophy. This helper is called
+     * from updateUI() on each frame. If no scenario is active, the fields are cleared.
+     */
+    updateScenarioStatePanel(){
+      const sc = this.state.scenario;
+      // If the scenario state DOM elements are not present (e.g. on older builds), do nothing.
+      if(!this.els.scStatus) return;
+      if(!sc){
+        this.els.scStatus.textContent = 'INACTIVE';
+        this.els.scArmed.textContent = 'NO';
+        this.els.scInjected.textContent = 'NO';
+        this.els.scResult.textContent = '—';
+        this.els.scElapsed.textContent = '0.0 s';
+        this.els.scType.textContent = '—';
+        return;
+      }
+      // Active/inactive status
+      this.els.scStatus.textContent = sc.active ? 'ACTIVE' : 'INACTIVE';
+      // Arming flag
+      this.els.scArmed.textContent = sc.armTriggered ? 'YES' : 'NO';
+      // Injection flag
+      this.els.scInjected.textContent = sc.injectionPerformed ? 'YES' : 'NO';
+      // Result: pending if still active; else success/failed based on trips
+      let res = 'PENDING';
+      if(!sc.active){
+        res = sc.trips > 0 ? 'FAILED' : 'SUCCESS';
+      }
+      this.els.scResult.textContent = res;
+      // Elapsed time since scenario start
+      const elapsed = sc.startTime ? ((Date.now() - sc.startTime) / 1000).toFixed(1) : '0.0';
+      this.els.scElapsed.textContent = `${elapsed} s`;
+      // Scenario type/philosophy
+      const type = sc.definition && sc.definition.type ? sc.definition.type : '—';
+      const labelMap = { 'CLEAN_SYNC':'CLEAN SYNC', 'OPERATE_THROUGH':'OPERATE-THROUGH', 'CLEAR_RECOVER':'CLEAR-RECOVER' };
+      this.els.scType.textContent = labelMap[type] || type;
+    },
+
+    /**
+     * validateScenarios()
+     *
+     * Development helper that inspects the scenario definitions and internal state for consistency. It
+     * verifies that each scenario has the required callbacks and philosophy fields, that the marker
+     * indices are in ascending order, and that trip snapshots (if any) capture the expected fields. It
+     * returns a multi‑line string summarising the findings and also logs the summary to the console.
+     */
+    validateScenarios(){
+      const lines = [];
+      for(const id of Object.keys(SCENARIOS)){
+        const def = SCENARIOS[id];
+        const type = def.type || 'UNKNOWN';
+        // Basic callback checks
+        const hasArm = typeof def.armCondition === 'function';
+        const hasInject = typeof def.injectCondition === 'function';
+        const hasSuccess = typeof def.successCondition === 'function';
+        const hasFail = typeof def.failureCondition === 'function';
+        const ok = hasArm && hasInject && hasSuccess && hasFail;
+        lines.push(`${id.toUpperCase()} (${type}): callbacks ${ok ? 'OK' : 'MISSING'}`);
+        // Summarise philosophy
+        if(type === 'OPERATE_THROUGH'){
+          lines.push(`  ▸ Operate through fault(s) ${def.faultIds && def.faultIds.length ? def.faultIds.join(', ') : ''}`);
+        } else if(type === 'CLEAR_RECOVER'){
+          lines.push(`  ▸ Clear fault(s) ${def.faultIds && def.faultIds.length ? def.faultIds.join(', ') : ''} before syncing`);
+        } else if(type === 'CLEAN_SYNC'){
+          lines.push('  ▸ Clean sync with no faults');
+        } else {
+          lines.push('  ▸ Unknown philosophy');
+        }
+        // Summarise logic paths (start, success, failure) by referencing callback names
+        lines.push(`  ▸ Arm when: ${def.armCondition.toString().replace(/\n/g,' ').substr(0,100)}`);
+        lines.push(`  ▸ Inject when: ${def.injectCondition.toString().replace(/\n/g,' ').substr(0,100)}`);
+        lines.push(`  ▸ Success when: ${def.successCondition.toString().replace(/\n/g,' ').substr(0,100)}`);
+        lines.push(`  ▸ Fail when: ${def.failureCondition.toString().replace(/\n/g,' ').substr(0,100)}`);
+      }
+      // Marker ordering check
+      const markers = this.state.markers;
+      let markerOk = true;
+      for(let i=1;i<markers.length;i++){
+        if(typeof markers[i].idx === 'number' && typeof markers[i-1].idx === 'number'){
+          if(markers[i].idx < markers[i-1].idx) markerOk = false;
+        }
+      }
+      lines.push(markerOk ? 'Markers sorted by idx: OK' : 'Markers sorted by idx: ERROR');
+      // Trip snapshot integrity check
+      if(this.state.tripSnapshot){
+        const snap = this.state.tripSnapshot;
+        const keys = ['dv','df','dp','current','faults','scenario'];
+        const missing = keys.filter(k => !(k in snap));
+        lines.push(missing.length === 0 ? 'Trip snapshot integrity: OK' : `Trip snapshot missing: ${missing.join(', ')}`);
+      } else {
+        lines.push('Trip snapshot integrity: no snapshot recorded');
+      }
+      const report = lines.join('\n');
+      console.log(report);
+      return report;
+    },
+
+    /**
+     * generateValidationSummary()
+     *
+     * Development helper that produces a higher‑level report about each scenario. It
+     * summarises the declared philosophy (type), the high‑level logic for arming and
+     * injection, and the success and failure conditions. It also reports whether
+     * the blocker/guidance alignment is consistent with the scenario philosophy. The
+     * summary is logged to the console and returned as a string. This helper does
+     * not alter runtime behaviour and should be used only for manual verification.
+     */
+    generateValidationSummary(){
+      const lines = [];
+      for(const id of Object.keys(SCENARIOS)){
+        const def = SCENARIOS[id];
+        const type = def.type || 'UNKNOWN';
+        lines.push(`${id.toUpperCase()} — ${type}`);
+        // Summarise start/arming logic
+        const arm = def.armCondition ? def.armCondition.toString().replace(/\n/g,' ').slice(0,120) : '—';
+        const inj = def.injectCondition ? def.injectCondition.toString().replace(/\n/g,' ').slice(0,120) : '—';
+        const succ = def.successCondition ? def.successCondition.toString().replace(/\n/g,' ').slice(0,120) : '—';
+        const fail = def.failureCondition ? def.failureCondition.toString().replace(/\n/g,' ').slice(0,120) : '—';
+        lines.push(`  arm when: ${arm}`);
+        lines.push(`  inject when: ${inj}`);
+        lines.push(`  success when: ${succ}`);
+        lines.push(`  fail when: ${fail}`);
+        // Guidance / blocker alignment note: operate‑through scenarios should not ask to clear faults
+        let guidanceNote = '';
+        if(type === 'OPERATE_THROUGH'){
+          guidanceNote = 'Expect guidance: tune controls (raise AVR, trim speed, lower load) — no fault clearance';
+        } else if(type === 'CLEAR_RECOVER'){
+          guidanceNote = 'Expect guidance: clear faults and reset breaker before closing';
+        } else if(type === 'CLEAN_SYNC'){
+          guidanceNote = 'Expect guidance: no faults, follow standard sync procedure';
+        } else {
+          guidanceNote = 'No explicit philosophy set';
+        }
+        lines.push(`  guidance hint: ${guidanceNote}`);
+      }
+      const summary = lines.join('\n');
+      console.log(summary);
+      return summary;
+    },
+
     dispatch(event){
       const prev = this.state.machine.mode;
       const ctxBefore = this.deriveContext();
@@ -682,6 +953,17 @@
     toggleChaos(){ this.state.chaos = !this.state.chaos; document.getElementById('btnChaos').textContent = this.state.chaos ? 'CHAOS ON' : 'CHAOS OFF'; this.log('Grid chaos ' + (this.state.chaos ? 'enabled' : 'disabled') + '.', this.state.chaos ? 'warn':'good'); },
     toggleAutoMatch(){ this.state.autoMatch = !this.state.autoMatch; const txt = this.state.autoMatch ? 'AUTO MATCH ON' : 'AUTO MATCH'; document.getElementById('btnAutoMatch').textContent = txt; const dock = document.getElementById('btnAutoMatchDock'); if(dock) dock.textContent = txt; this.log('Auto-match ' + (this.state.autoMatch ? 'enabled' : 'disabled') + '.', this.state.autoMatch ? 'good':'warn'); },
     raiseLoad(){ this.state.loadDemandKW = this.clamp(this.state.loadDemandKW + 350, 1800, 9000); this.log('Load request raised to ' + Math.round(this.state.loadDemandKW) + ' kW.', 'good'); },
+
+    /**
+     * lowerLoad()
+     *
+     * Decrease the load demand in 350 kW increments to allow recovery from overcurrent faults. The load
+     * demand is clamped between 1.8 MW and 9 MW. This complements the raiseLoad() control.
+     */
+    lowerLoad(){
+      this.state.loadDemandKW = this.clamp(this.state.loadDemandKW - 350, 1800, 9000);
+      this.log('Load request lowered to ' + Math.round(this.state.loadDemandKW) + ' kW.', 'warn');
+    },
     resetAll(){
       clearTimeout(this.state.replayTimer);
       this.state = machineResetState(this.state);
@@ -689,8 +971,70 @@
       document.getElementById('btnAutoMatch').textContent = 'AUTO MATCH';
       const dock = document.getElementById('btnAutoMatchDock'); if(dock) dock.textContent = 'AUTO MATCH';
       document.getElementById('debriefPanel').style.display = 'none';
+      // hide any trip summary panel
+      const tripPanel = document.getElementById('tripPanel'); if(tripPanel) tripPanel.style.display = 'none';
+      // clear markers and trip reason on full reset
+      this.state.markers = [];
+      this.state.lastTripReason = '';
       this.log('Full system reset.', 'warn');
       this.updateUI();
+    },
+
+    /**
+     * Evaluate the active scenario against state conditions. This function is called on every tick
+     * to replace the previous timer-based sequencing with deterministic, state-aware sequencing.
+     * It will auto-start the generator when the scenario's armCondition returns true, inject
+     * the configured faults once the injectCondition returns true, and terminate the scenario on
+     * success, failure, or timeout. A scenario may only end once.
+     */
+    evaluateScenarioState(){
+      const sc = this.state.scenario;
+      if(!sc || !sc.active) return;
+      const s = this.state;
+      const def = sc.definition;
+      const now = Date.now();
+      const elapsed = (now - sc.startTime) / 1000;
+      // Check timeout if defined
+      if(def.maxDurationSec && elapsed > def.maxDurationSec){
+        this.log('Scenario timed out.', 'warn');
+        this.endScenario(false);
+        return;
+      }
+      // Check failure condition before success to avoid awarding success incorrectly
+      try{
+        if(typeof def.failureCondition === 'function' && def.failureCondition(s)){
+          this.endScenario(false);
+          return;
+        }
+      } catch(err){ console.error('failureCondition error:', err); }
+      // Check success condition
+      try{
+        if(typeof def.successCondition === 'function' && def.successCondition(s)){
+          this.endScenario(true);
+          return;
+        }
+      } catch(err){ console.error('successCondition error:', err); }
+      // Auto-arm: start generator when armCondition is met
+      if(!sc.armTriggered && typeof def.armCondition === 'function'){
+        try{
+          if(def.armCondition(s)){
+            // attempt to start generator. Guard inside startGen prevents inappropriate starting.
+            this.startGen();
+            sc.armTriggered = true;
+          }
+        } catch(err){ console.error('armCondition error:', err); }
+      }
+      // Inject faults when injectCondition is satisfied and not yet performed
+      if(!sc.injectionPerformed && typeof def.injectCondition === 'function'){
+        try{
+          if(def.injectCondition(s)){
+            if(Array.isArray(def.faultIds)){
+              def.faultIds.forEach(fid => this.injectFault(fid));
+            }
+            sc.injectionPerformed = true;
+          }
+        } catch(err){ console.error('injectCondition error:', err); }
+      }
     },
     resetBreaker(){
       if(this.state.breaker !== 'TRIPPED' && this.state.breaker !== 'OPEN') return;
@@ -711,35 +1055,62 @@
       if(!ctx.syncSafe){ this.tripBreaker(`Unsafe sync attempt. ΔV ${ctx.dv.toFixed(0)} V, Δf ${ctx.df.toFixed(3)} Hz, Δφ ${ctx.dphi.toFixed(1)}°`); return; }
       if(this.state.machine.mode !== MODE.SYNC_WINDOW){ this.log('Close blocked. Not in sync window.', 'warn'); return; }
       this.dispatch(EVENT.BREAKER_CLOSE_CMD);
+      // record marker for operator close command
+      this.recordMarker('close_cmd');
       this.state.brkrClosingTimer = 0.12;
       this.state.postCloseHold = 1.2;
-      this.log('Breaker close issued in sync window.', 'good');
+      // log close command with its own level
+      this.log('Breaker close issued in sync window.', 'closecmd');
       this.vibrate([18,30,18]);
     },
     tripBreaker(reason){
-      this.state.breaker = 'TRIPPED'; this.state.brkrClosingTimer = 0; this.state.currentA = 0; this.state.pKW = 0; this.state.qMVAr = 0; this.state.sKVA = 0; this.state.pf = 1;
+      // Capture snapshot of operating conditions immediately before tripping
+      const ctx = this.deriveContext();
+      this.state.tripSnapshot = {
+        dv: ctx.dv,
+        df: ctx.df,
+        dphi: ctx.dphi,
+        current: this.state.currentA,
+        faults: new Set(this.state.faults),
+        scenarioId: this.state.scenario && this.state.scenario.id ? this.state.scenario.id : null
+      };
+      // Record trip event and reason
+      this.state.breaker = 'TRIPPED';
+      this.state.brkrClosingTimer = 0;
+      // Zero out electrical outputs after trip
+      this.state.currentA = 0;
+      this.state.pKW = 0;
+      this.state.qMVAr = 0;
+      this.state.sKVA = 0;
+      this.state.pf = 1;
+      this.state.lastTripReason = reason;
+      this.recordMarker('trip');
       this.dispatch(EVENT.PROTECTION_TRIP);
       this.log(reason, 'trip');
       this.vibrate([100,60,100,60,180]);
-      if (this.state.scenario && this.state.scenario.active) {
+      if(this.state.scenario && this.state.scenario.active){
         this.state.scenario.trips++;
         this.state.scenario.unsafeAttempts++;
         this.endScenario(false);
       }
+      // Show trip summary panel
+      this.showTripSummary(reason);
     },
     injectFault(name){
       this.state.faults.add(name);
       this.dispatch(EVENT.FAULT_INJECTED);
-      this.log(name + ' fault injected.', 'trip');
+      this.recordMarker('fault');
+      this.log(name + ' fault injected.', 'fault');
       this.vibrate([60,40,100]);
+      // PHASE‑ERR introduces an immediate angle offset to simulate mis‑sync. No other fault instantly trips the breaker on injection.
       if(name === 'PHASE-ERR') this.state.genAngle += 22;
-      if(name === 'OVERCURRENT' && this.state.breaker === 'CLOSED') this.tripBreaker('50/51 trip on overcurrent fault');
     },
     clearFaults(){
       if(this.state.faults.size===0) return;
       this.state.faults.clear();
       this.dispatch(EVENT.FAULT_CLEARED);
-      this.log('All faults cleared.', 'good');
+      this.recordMarker('fault_clear');
+      this.log('All faults cleared.', 'clear');
     },
     applyPreset(key){ this.els.timingPreset.value = key; this.els.timingInput.value = presets[key] || presets.sync; this.renderTiming(); },
     parseTiming(text){ return text.split(/\n+/).map(s=>s.trim()).filter(Boolean).map(line=>{ const idx=line.indexOf(':'); if(idx<0) return null; const name=line.slice(0,idx).trim(); const seq=line.slice(idx+1).trim().replace(/\s+/g,''); return {name, seq}; }).filter(Boolean); },
@@ -787,7 +1158,101 @@
     },
     clamp(v,min,max){ return Math.min(max, Math.max(min, v)); },
     wrapDeg(d){ let x = d % 360; if(x > 180) x -= 360; if(x < -180) x += 360; return x; },
-    pushHistory(){ this.state.history.push({ t:performance.now(), gridF:this.state.gridF, genF:this.state.genF, currentA:this.state.currentA, pKW:this.state.pKW }); if(this.state.history.length > 300) this.state.history.shift(); },
+
+    /**
+     * Record an event marker for the trend chart. The marker index corresponds
+     * to the next history entry that will be pushed on the next tick. This
+     * allows event lines to align with the data points in the trend chart.
+     * @param {string} type Identifier for the event (fault, fault_clear, trip,
+     * close_cmd, closed, scenario, etc).
+     */
+    recordMarker(type){
+      // Use the last history index so the marker aligns with the most recent sample.
+      let idx = this.state.history.length - 1;
+      if (idx < 0) idx = 0;
+      this.state.markers.push({ idx, type });
+    },
+
+    /**
+     * Display a trip summary panel showing why protection tripped and what
+     * conditions existed at the moment of trip. Uses a snapshot captured
+     * immediately before the trip to report ΔV, Δf, Δφ and current.
+     * @param {string} reason The reason message provided when tripped.
+     */
+    showTripSummary(reason){
+      const panel = document.getElementById('tripPanel');
+      const div = document.getElementById('tripContent');
+      if(!panel || !div) return;
+      // Determine snapshot from state or compute fallback context
+      const snap = this.state.tripSnapshot || {};
+      // Fallback compute context if snapshot not present
+      const ctx = this.deriveContext();
+      const dv  = typeof snap.dv  === 'number' ? snap.dv  : ctx.dv;
+      const df  = typeof snap.df  === 'number' ? snap.df  : ctx.df;
+      const dphi= typeof snap.dphi=== 'number' ? snap.dphi: ctx.dphi;
+      const current = typeof snap.current === 'number' ? snap.current : this.state.currentA;
+      const faultsArr = Array.from(snap.faults || this.state.faults);
+      const faultsStr = faultsArr.length ? faultsArr.join(', ') : 'None';
+      const scenarioName = (snap.scenarioId ? snap.scenarioId.toUpperCase() : ((this.state.scenario && this.state.scenario.id) ? this.state.scenario.id.toUpperCase() : '—'));
+      const guidance = this.getTripGuidance(snap);
+      div.innerHTML = `
+        <div><strong>Trip cause:</strong> ${reason}</div>
+        <div><strong>Trip conditions:</strong> ΔV ${dv.toFixed(0)} V, Δf ${df.toFixed(3)} Hz, Δφ ${dphi.toFixed(1)}°, I ${current.toFixed(0)} A</div>
+        <div><strong>Active faults at trip:</strong> ${faultsStr}</div>
+        <div><strong>Scenario:</strong> ${scenarioName}</div>
+        <div style="margin-top:8px"><strong>Recovery guidance:</strong> ${guidance}</div>
+      `;
+      panel.style.display = 'block';
+    },
+
+    /**
+     * Provide operator guidance on how to recover after a trip. Tailored to
+     * active faults and scenario ID when available.
+     * @param {Object} snap Snapshot object containing dv, df, dphi, current,
+     * faults Set and scenarioId.
+     */
+    getTripGuidance(snap = {}){
+      const faultsArr = Array.from(snap.faults || this.state.faults);
+      const hints = [];
+      // Fault-specific guidance
+      if(faultsArr.includes('V-SAG')) hints.push('Raise generator voltage above 13.0 kV to clear V‑SAG');
+      if(faultsArr.includes('F-SURGE')) hints.push('Reduce frequency surge; trim governor setpoint toward 60 Hz');
+      if(faultsArr.includes('PHASE-ERR')) hints.push('Align phase; wait for slip to settle and adjust frequency');
+      if(faultsArr.includes('OVERCURRENT')) hints.push('Reduce load or increase governor setpoint to manage current');
+      if(faultsArr.includes('BRKR-STUCK')) hints.push('Clear the BRKR‑STUCK fault and reset breaker');
+      // Scenario-specific guidance
+      const scenarioId = snap.scenarioId || (this.state.scenario ? this.state.scenario.id : null);
+      if(scenarioId){
+        switch(scenarioId){
+          case 'quickstart': hints.push('Follow the quickstart drill sequence and tune voltage/frequency carefully'); break;
+          case 'vsag': hints.push('Focus on maintaining generator voltage within safe band'); break;
+          case 'phaseerr': hints.push('Prioritize frequency and angle alignment'); break;
+          case 'overcurrent': hints.push('Monitor load demand and current to avoid trip'); break;
+          case 'stuck': hints.push('Practice clearing the stuck breaker fault before closing'); break;
+          case 'combined': hints.push('Manage voltage and phase faults simultaneously'); break;
+        }
+      }
+      // General safe-sync guidance
+      hints.push('Ensure ΔV < 500 V, Δf < 0.03 Hz and Δφ < 5° before closing');
+      hints.push('Reset breaker and clear faults, then attempt safe sync again');
+      return hints.join('; ');
+    },
+    pushHistory(){
+      // Record a history sample with timestamp and key metrics for trend and analysis
+      this.state.history.push({
+        t: performance.now(),
+        gridF: this.state.gridF,
+        genF: this.state.genF,
+        currentA: this.state.currentA,
+        pKW: this.state.pKW
+      });
+      // Maintain a rolling window of 300 samples and adjust marker indices accordingly
+      if(this.state.history.length > 300){
+        this.state.history.shift();
+        // Decrement marker indices and drop those that fall off the left side
+        this.state.markers = this.state.markers.map(m => ({ ...m, idx: m.idx - 1 })).filter(m => m.idx >= 0);
+      }
+    },
 
     getBlockerReason() {
       const s = this.state;
@@ -795,7 +1260,25 @@
       if (s.breaker === 'TRIPPED') return 'Breaker is TRIPPED — reset first';
       if (!s.gridHealthy) return 'Grid not healthy — wait for warmup';
       if (!s.genStarted) return 'Generator offline — start GEN';
-      if (s.faults.size > 0) return 'Active fault present — clear faults';
+
+      // If we are in an operate-through scenario involving voltage sag, ensure the operator
+      // raises the generator AVR above the minimum required level before attempting closure.
+      {
+        const scDef2 = s.scenario && s.scenario.active ? s.scenario.definition : null;
+        if (scDef2 && scDef2.type === 'OPERATE_THROUGH' && scDef2.faultIds && scDef2.faultIds.includes('V-SAG')) {
+          // V-SAG drills require generator voltage > 13.0 kV before closing
+          if (s.genV <= 13.0) return 'Generator voltage low — raise AVR';
+        }
+      }
+      if (s.faults.size > 0) {
+        // Determine if the current scenario expects the operator to operate through faults. In that case we
+        // should not instruct clearance here. Instead allow guidance to focus on tuning controls.
+        const scDef = s.scenario && s.scenario.active ? s.scenario.definition : null;
+        if (!(scDef && scDef.type === 'OPERATE_THROUGH')) {
+          return 'Active fault present — clear faults';
+        }
+        // Otherwise fall through and evaluate sync conditions normally
+      }
       if (!ctx.syncSafe) {
         if (ctx.dv >= 500) return 'ΔV too high — trim voltage';
         if (ctx.df >= 0.03) return 'Δf too high — trim speed';
@@ -900,26 +1383,26 @@
       const id = this.els.scenarioSelect.value;
       this.resetAll();
       const def = SCENARIOS[id];
-      this.state.scenario = { 
-        active: true, 
-        id: id, 
+      // Initialize scenario state with additional flags for arm/injection
+      this.state.scenario = {
+        active: true,
+        id: id,
         objective: def.objective,
-        startTime: Date.now(), 
-        score: 0, 
-        unsafeAttempts: 0, 
-        trips: 0, 
+        startTime: Date.now(),
+        score: 0,
+        unsafeAttempts: 0,
+        trips: 0,
         syncTime: 0,
-        definition: def
+        definition: def,
+        armTriggered: false,
+        injectionPerformed: false
       };
       this.log(`SCENARIO STARTED: ${id.toUpperCase()} — ${def.objective}`, 'good');
+      // Provide tactile feedback to indicate scenario start
       this.vibrate([30,20,30]);
-
-      if(id === 'quickstart'){ this.startSim(); setTimeout(()=>this.startGrid(),800); }
-      else if(id === 'vsag'){ this.startSim(); setTimeout(()=>this.startGrid(),800); setTimeout(()=>{ this.injectFault('V-SAG'); }, 4200); }
-      else if(id === 'phaseerr'){ this.startSim(); setTimeout(()=>this.startGrid(),800); setTimeout(()=>{ this.startGen(); this.injectFault('PHASE-ERR'); }, 3800); }
-      else if(id === 'overcurrent'){ this.startSim(); setTimeout(()=>this.startGrid(),800); setTimeout(()=>{ this.startGen(); this.injectFault('OVERCURRENT'); }, 4500); }
-      else if(id === 'stuck'){ this.startSim(); setTimeout(()=>this.startGrid(),800); setTimeout(()=>{ this.injectFault('BRKR-STUCK'); }, 4000); }
-      else if(id === 'combined'){ this.startSim(); setTimeout(()=>this.startGrid(),800); setTimeout(()=>{ this.injectFault('V-SAG'); this.injectFault('PHASE-ERR'); }, 4200); }
+      // Start the simulation and grid immediately. The scenario engine will handle further sequencing.
+      this.startSim();
+      this.startGrid();
     },
 
     endScenario(success) {
@@ -933,6 +1416,17 @@
       this.state.scenario.score = Math.max(0, score);
 
       const def = this.state.scenario.definition;
+      // Build the debrief or failure content based on success
+      let scenarioContent;
+      if (success) {
+        scenarioContent = def.debriefTemplate(Math.round(this.state.scenario.score), this.state.scenario);
+      } else {
+        if (typeof def.failTemplate === 'function') {
+          scenarioContent = def.failTemplate(this.state.scenario, this.state.lastTripReason);
+        } else {
+          scenarioContent = 'Scenario failed. Review the trip summary and log before retrying.';
+        }
+      }
       const debriefHTML = `
         <strong>Scenario: ${this.state.scenario.id.toUpperCase()}</strong><br>
         Objective: ${this.state.scenario.objective}<br>
@@ -940,11 +1434,14 @@
         Unsafe attempts: ${this.state.scenario.unsafeAttempts}<br>
         Trips: ${this.state.scenario.trips}<br>
         <span style="color:var(--green);font-weight:700">FINAL SCORE: ${Math.round(this.state.scenario.score)} / 120</span><br>
-        ${def.debriefTemplate(Math.round(this.state.scenario.score), this.state.scenario)}
+        ${scenarioContent}
       `;
       document.getElementById('debriefContent').innerHTML = debriefHTML;
       document.getElementById('debriefPanel').style.display = 'block';
-      this.log(`SCENARIO COMPLETE — Score ${Math.round(this.state.scenario.score)}`, success ? 'good' : 'trip');
+      // record marker for scenario completion
+      this.recordMarker('scenario');
+      // log scenario completion event with distinct level
+      this.log(`SCENARIO COMPLETE — Score ${Math.round(this.state.scenario.score)}`, success ? 'good' : 'scenario');
       this.state.lastScore = this.state.scenario.score;
       if (!this.state.bestScore[this.state.scenario.id] || this.state.scenario.score > this.state.bestScore[this.state.scenario.id]) {
         this.state.bestScore[this.state.scenario.id] = this.state.scenario.score;
@@ -953,6 +1450,26 @@
       this.updateTrainingModeBadge();
     },
 
+    /**
+     * updatePhysics(dt)
+     *
+     * This function advances the training simulation based on a simple heuristic model of generator and grid dynamics. It is deliberately
+     * lightweight to remain performant in a single‑file browser environment. The logic here observes several categories:
+     *
+     *  • Training invariants: The grid must energize and warm up before becoming healthy; the generator ramps separately; no power
+     *    transfer occurs while the breaker is OPEN; in PARALLEL mode the generator angle and slip are forced to track the grid.
+     *
+     *  • Electrical heuristics: Current, power and reactive power are estimated via approximate formulas based on voltage mismatch,
+     *    frequency error and phase angle. These are not full Kirchhoff/Maxwell calculations but serve to illustrate operator effects.
+     *
+     *  • UI normalization: When the breaker is CLOSED, the displayed generator voltage and frequency snap to the grid values; displayed
+     *    slip, phase, Δf and Δφ are shown as zero to reinforce that machines are synchronised. Internally the raw mismatches (dv, df,
+     *    dφ) continue to be computed for protection and scoring logic.
+     *
+     *  • Scenario‑specific logic: The state‑aware scenario engine (see evaluateScenarioState()) manages when to arm, inject faults,
+     *    and evaluate success/failure. It does not interfere with the physics; this updatePhysics function simply reflects the
+     *    current operating conditions and faults.
+     */
     updatePhysics(dt){
       if(this.state.paused) return;
       const s = this.state;
@@ -1017,13 +1534,37 @@
       s.phaseDeg = this.wrapDeg(s.genAngle - s.gridAngle);
       s.slipHz = s.breaker === 'CLOSED' ? 0 : (s.genF - s.gridF);
 
+      // Determine sync-safety context once per tick
       const ctx = this.deriveContext();
-      if(this.state.machine.mode === MODE.GEN_STARTING){
-        this.dispatch(ctx.syncSafe ? EVENT.SYNC_READY : EVENT.SYNC_LOST);
-      } else if(ctx.syncSafe && this.state.machine.mode === MODE.GEN_READY){
-        this.dispatch(EVENT.SYNC_READY);
-      } else if(!ctx.syncSafe && this.state.machine.mode === MODE.SYNC_WINDOW){
-        this.dispatch(EVENT.SYNC_LOST);
+      // Implement dwell timers for entering and leaving the sync window. This prevents rapid oscillation and
+      // requires thresholds to be met continuously for a period of time before firing events.
+      const m = this.state.machine.mode;
+      // In GEN_STARTING or GEN_READY modes, accumulate syncReadyTimer while safe and reset lost timer
+      if((m === MODE.GEN_STARTING || m === MODE.GEN_READY)){
+        if(ctx.syncSafe){
+          this.state.syncReadyTimer += dt;
+          this.state.syncLostTimer = 0;
+          // once the dwell threshold is met, dispatch SYNC_READY event and reset timer
+          if(this.state.syncReadyTimer >= 0.4){
+            this.dispatch(EVENT.SYNC_READY);
+            this.state.syncReadyTimer = 0;
+          }
+        } else {
+          // reset timer if conditions are not continuously safe
+          this.state.syncReadyTimer = 0;
+        }
+      }
+      // In SYNC_WINDOW mode, accumulate syncLostTimer while unsafe and reset ready timer
+      if(m === MODE.SYNC_WINDOW){
+        if(!ctx.syncSafe){
+          this.state.syncLostTimer += dt;
+          if(this.state.syncLostTimer >= 0.2){
+            this.dispatch(EVENT.SYNC_LOST);
+            this.state.syncLostTimer = 0;
+          }
+        } else {
+          this.state.syncLostTimer = 0;
+        }
       }
 
       if(s.brkrClosingTimer > 0){
@@ -1031,8 +1572,11 @@
         if(s.brkrClosingTimer <= 0){
           s.breaker = 'CLOSED';
           s.genAngle = s.gridAngle;
+          // record closed marker
+          this.recordMarker('closed');
           this.dispatch(EVENT.BREAKER_CLOSE_CONFIRMED);
-          this.log('Breaker is CLOSED.', 'good');
+          // log with closed level
+          this.log('Breaker is CLOSED.', 'closed');
           if (this.state.scenario && this.state.scenario.active && this.state.scenario.definition.successCondition(this.state)) {
             this.endScenario(true);
           }
@@ -1047,12 +1591,26 @@
         const dP = this.wrapDeg(s.phaseDeg);
         s.pKW += (s.loadDemandKW - s.pKW) * dt * 1.3;
         s.qMVAr += (this.clamp(dV * 2.2, -3.5, 3.5) - s.qMVAr) * dt * 1.1;
+        // Apparent power magnitude. Note: qMVAr tracked in MVAr; convert to kVAr for calculation.
         s.sKVA = Math.round(Math.sqrt(s.pKW * s.pKW + (s.qMVAr * 1000) * (s.qMVAr * 1000)));
         s.pf = s.sKVA > 1 ? this.clamp(Math.abs(s.pKW) / s.sKVA, 0, 1) : 1;
+        // Base current assuming balanced 3‑phase system. Prevent division by zero on voltage.
         const baseA = Math.abs(s.sKVA) > 1 ? (s.sKVA * 1000) / (Math.sqrt(3) * Math.max(1, s.gridV * 1000)) : 0;
+        // Additional stress due to mismatch of voltage/frequency/phase while closing. These coefficients are heuristic.
         const syncStressA = Math.abs(dP) * 8 + Math.abs(dF) * 1800 + Math.abs(dV) * 120;
-        s.currentA = baseA + syncStressA + 10;
-        if(s.faults.has('OVERCURRENT')) s.currentA = 2200;
+        // Compute current draw. Start with base plus sync mismatch stress and a nominal offset.
+        let Ia = baseA + syncStressA + 10;
+        // If an OVERCURRENT fault is active and the breaker is closed, simulate current rise due to mechanical mismatch and load.
+        if(s.faults.has('OVERCURRENT') && s.breaker === 'CLOSED'){
+          // Governor droop contribution: larger frequency error translates into higher armature current. Factor is tuned for training realism.
+          const ocDroop = Math.abs(s.governorDroopHz) * 25000;
+          // Load contribution: additional current proportional to load demand above baseline 4200 kW. Clamp between 0 and 1 for sanity.
+          const loadRatio = this.clamp((s.loadDemandKW - 4200) / 3800, 0, 1);
+          const ocLoad = loadRatio * 1200;
+          Ia += ocDroop + ocLoad;
+        }
+        s.currentA = Ia;
+        // Protection trip on excessive mismatch or sustained overcurrent after post‑close hold expires. Use actual mismatch values here, not UI‑normalized.
         if(s.postCloseHold <= 0 && (Math.abs(dV) * 1000 > 1000 || Math.abs(dF) > 0.2 || s.currentA > 1500)){
           this.tripBreaker(`Protection trip. ΔV ${(Math.abs(dV) * 1000).toFixed(0)} V, Δf ${Math.abs(dF).toFixed(3)} Hz, I ${s.currentA.toFixed(0)} A`);
         }
@@ -1072,35 +1630,49 @@
       s.genF = this.clamp(s.genF, 0, 61);
     },
 
+    /**
+     * updateUI()
+     *
+     * Synchronise DOM elements with the current simulator state. Display values are normalised for operator comprehension. In
+     * PARALLEL mode (breaker CLOSED), the generator voltage and frequency display match the grid, and displayed slip and phase
+     * differences are forced to zero. Actual mismatches (dv, df, dφ) remain available internally for gating and protection logic.
+     */
     updateUI(){
+      const s=this.state;
       const displayGridV = s.gridV;
       const displayGridF = s.gridF;
       const displayGenV = s.breaker === 'CLOSED' ? s.gridV : s.genV;
       const displayGenF = s.breaker === 'CLOSED' ? s.gridF : s.genF;
 
-      const displaySlipHz = s.breaker === 'CLOSED' ? 0 : s.slipHz;
-      const displayPhaseDeg = s.breaker === 'CLOSED' ? 0 : this.wrapDeg(s.phaseDeg);
-
-      const absDV = Math.abs(s.genV - s.gridV) * 1000;
-      const absDf = s.breaker === 'CLOSED' ? 0 : Math.abs(s.slipHz);
-      const absDp = s.breaker === 'CLOSED' ? 0 : Math.abs(this.wrapDeg(s.phaseDeg));
-
-      this.els.gridBrief.textContent = (displayGridV * 1000).toFixed(0) + ' V';
+      this.els.gridBrief.textContent = (displayGridV*1000).toFixed(0) + ' V';
       this.els.gridSub.textContent = displayGridF.toFixed(3) + ' Hz';
-      this.els.genBrief.textContent = (displayGenV * 1000).toFixed(0) + ' V';
+      this.els.genBrief.textContent = (displayGenV*1000).toFixed(0) + ' V';
       this.els.genSub.textContent = displayGenF.toFixed(3) + ' Hz';
 
-      this.els.breakerBrief.textContent = s.breaker; this.els.breakerBrief.className = 'value ' + (s.breaker==='CLOSED'?'status-closed':s.breaker==='TRIPPED'?'status-trip':'status-open');
-      this.els.syncSub.textContent = 'Δf ' + absDf.toFixed(3) + ' Hz · Δφ ' + absDp.toFixed(1) + '°';
+      this.els.breakerBrief.textContent = s.breaker;
+      this.els.breakerBrief.className = 'value ' + (s.breaker==='CLOSED'?'status-closed':s.breaker==='TRIPPED'?'status-trip':'status-open');
+      // When the breaker is closed, normalize displayed slip and phase to zero. Use actual values internally for protection logic.
+      const displaySlipHz = s.breaker === 'CLOSED' ? 0 : s.slipHz;
+      const displayPhaseDeg = s.breaker === 'CLOSED' ? 0 : this.wrapDeg(s.phaseDeg);
+      const displayAbsDf = Math.abs(displaySlipHz);
+      const displayAbsDp = Math.abs(displayPhaseDeg);
+      this.els.syncSub.textContent = 'Δf ' + displayAbsDf.toFixed(3) + ' Hz · Δφ ' + displayAbsDp.toFixed(1) + '°';
+      this.els.powerBrief.textContent = Math.round(s.pKW) + ' kW';
+      this.els.currentSub.textContent = s.currentA.toFixed(0) + ' A · PF ' + s.pf.toFixed(2);
+
+      // Actual mismatches used for sync readiness and protection gating. Do not normalize these values.
+      const absDV = Math.abs(s.genV - s.gridV) * 1000;
+      const absDf = Math.abs(s.slipHz);
+      const absDp = Math.abs(this.wrapDeg(s.phaseDeg));
+      // Use normalized slip/phase for UI display; absolute differences for dv/hz/deg shown accordingly.
       this.els.kvSlip.textContent = displaySlipHz.toFixed(3) + ' Hz';
       this.els.kvPhase.textContent = displayPhaseDeg.toFixed(1) + '°';
-      this.els.kvDfAbs.textContent = absDf.toFixed(3) + ' Hz';
-      this.els.kvDpAbs.textContent = absDp.toFixed(1) + '°';
-      this.els.powerBrief.textContent = Math.round(s.pKW) + ' kW'; this.els.currentSub.textContent = s.currentA.toFixed(0) + ' A · PF ' + s.pf.toFixed(2);
-
-      const absDV = Math.abs(s.genV - s.gridV) * 1000, absDf = Math.abs(s.slipHz), absDp = Math.abs(this.wrapDeg(s.phaseDeg));
-      this.els.kvSlip.textContent = s.slipHz.toFixed(3) + ' Hz'; this.els.kvPhase.textContent = this.wrapDeg(s.phaseDeg).toFixed(1) + '°'; this.els.kvQ.textContent = s.qMVAr.toFixed(2) + ' MVAr'; this.els.kvS.textContent = Math.round(s.sKVA) + ' kVA';
-      this.els.kvDV.textContent = absDV.toFixed(0) + ' V'; this.els.kvDfAbs.textContent = absDf.toFixed(3) + ' Hz'; this.els.kvDpAbs.textContent = absDp.toFixed(1) + '°'; this.els.kvTemp.textContent = s.genTempC.toFixed(1) + ' °C';
+      this.els.kvQ.textContent = s.qMVAr.toFixed(2) + ' MVAr';
+      this.els.kvS.textContent = Math.round(s.sKVA) + ' kVA';
+      this.els.kvDV.textContent = absDV.toFixed(0) + ' V';
+      this.els.kvDfAbs.textContent = displayAbsDf.toFixed(3) + ' Hz';
+      this.els.kvDpAbs.textContent = displayAbsDp.toFixed(1) + '°';
+      this.els.kvTemp.textContent = s.genTempC.toFixed(1) + ' °C';
 
       this.els.gridStateText.textContent = s.gridHealthy ? 'GRID HEALTHY' : (s.gridStarted ? 'WARMING UP' : 'DE-ENERGIZED'); this.els.gridStateText.className = s.gridHealthy ? 'status-online' : 'status-offline';
       this.els.genStateText.textContent = s.genStarted ? 'GEN ONLINE' : 'OFFLINE'; this.els.genStateText.className = s.genStarted ? 'status-online' : 'status-offline';
@@ -1147,6 +1719,8 @@
 
       this.updateTelemetryUI();
       this.updateTrainingModeBadge();
+      // Update the scenario state readout on each UI refresh
+      this.updateScenarioStatePanel();
     },
 
     drawScope(){
@@ -1174,14 +1748,49 @@
       const maxI=Math.max(500,...hist.map(p=>p.currentA)); const maxKW=Math.max(5000,...hist.map(p=>Math.abs(p.pKW)));
       const xAt=i=>40 + i*(w-60)/(Math.max(1,hist.length-1));
       const draw=(arr,color,maxVal)=>{ ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath(); arr.forEach((v,i)=>{ const x=xAt(i), y=h-14 - (v/maxVal)*(h-28); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke(); };
-      draw(hist.map(p=>p.gridF-59.8),'#59d7ff',0.6); draw(hist.map(p=>p.genF-59.8),'#f6c453',0.6); draw(hist.map(p=>p.currentA),'#31d28a',maxI); draw(hist.map(p=>Math.abs(p.pKW)),'#ff6b6b',maxKW);
-      ctx.fillStyle='#96a6bc'; ctx.font='11px sans-serif'; ctx.fillText('cyan: grid Hz offset', 48, 16); ctx.fillText('gold: gen Hz offset', 200, 16); ctx.fillText('green: amps', 360, 16); ctx.fillText('red: |kW|', 460, 16);
+      draw(hist.map(p=>p.gridF-59.8),'#59d7ff',0.6);
+      draw(hist.map(p=>p.genF-59.8),'#f6c453',0.6);
+      draw(hist.map(p=>p.currentA),'#31d28a',maxI);
+      draw(hist.map(p=>Math.abs(p.pKW)),'#ff6b6b',maxKW);
+      // Draw event markers as vertical lines spanning the chart
+      const markerColors = {
+        fault: '#f6c453',
+        fault_clear: '#31d28a',
+        close_cmd: '#a78bfa',
+        closed: '#59d7ff',
+        trip: '#ff6b6b',
+        scenario: '#b3a7ff'
+      };
+      this.state.markers.forEach(m => {
+        if(typeof m.idx !== 'number') return;
+        const x = xAt(m.idx);
+        // Only draw if within visible area
+        if(x >= 40 && x <= w - 20){
+          const col = markerColors[m.type] || '#888';
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(x, 10);
+          ctx.lineTo(x, h - 10);
+          ctx.stroke();
+        }
+      });
+      ctx.fillStyle='#96a6bc';
+      ctx.font='11px sans-serif';
+      ctx.fillText('cyan: grid Hz offset', 48, 16);
+      ctx.fillText('gold: gen Hz offset', 200, 16);
+      ctx.fillText('green: amps', 360, 16);
+      ctx.fillText('red: |kW|', 460, 16);
     },
 
     tick(now){
       const dt=Math.min(0.25,(now-this.state.lastTick)/1000 || 0.016); this.state.lastTick=now;
       if(now % 200 < 17) this.state.telemetryFreq = 60 + Math.sin(now/180000)*0.012 + (this.state.chaos ? (Math.random()-0.5)*0.004 : 0);
       this.updatePhysics(dt);
+      // Evaluate scenario state after physics update but before recording history. This allows
+      // state-aware sequencing such as auto-start and fault injection to react to the latest
+      // measurements and to log markers at the correct index.
+      this.evaluateScenarioState();
       this.pushHistory();
       this.updateUI();
       this.drawScope();
