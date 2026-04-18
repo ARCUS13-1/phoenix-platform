@@ -785,6 +785,7 @@
         this.els.scResult.textContent = '—';
         this.els.scElapsed.textContent = '0.0 s';
         this.els.scType.textContent = '—';
+        if (this.els.scStable) this.els.scStable.textContent = '—';
         return;
       }
       // Active/inactive status
@@ -806,6 +807,14 @@
       const type = sc.definition && sc.definition.type ? sc.definition.type : '—';
       const labelMap = { 'CLEAN_SYNC':'CLEAN SYNC', 'OPERATE_THROUGH':'OPERATE-THROUGH', 'CLEAR_RECOVER':'CLEAR-RECOVER' };
       this.els.scType.textContent = labelMap[type] || type;
+      if (this.els.scStable) {
+      if (sc.id === 'overcurrent') {
+      const stable = typeof sc.overcurrentStableTime === 'number' ? sc.overcurrentStableTime : 0;
+      this.els.scStable.textContent = `${stable.toFixed(1)} / 3.0 s`;
+     } else {
+      this.els.scStable.textContent = '—';
+  }
+}
     },
 
     /**
