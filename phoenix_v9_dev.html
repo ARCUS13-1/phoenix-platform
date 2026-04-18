@@ -1024,14 +1024,16 @@
           }
         } catch(err){ console.error('armCondition error:', err); }
       }
-      // Inject faults when injectCondition is satisfied and not yet performed
+            // Inject faults when injectCondition is satisfied and not yet performed
       if(!sc.injectionPerformed && typeof def.injectCondition === 'function'){
         try{
           if(def.injectCondition(s)){
+            this.log(`SCENARIO INJECT CHECK — ${sc.id} injectCondition met`, 'scenario');
             if(Array.isArray(def.faultIds)){
               def.faultIds.forEach(fid => this.injectFault(fid));
             }
             sc.injectionPerformed = true;
+            this.log(`SCENARIO INJECTION COMPLETE — ${sc.id}`, 'scenario');
           }
         } catch(err){ console.error('injectCondition error:', err); }
       }
