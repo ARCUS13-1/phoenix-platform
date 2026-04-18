@@ -439,7 +439,13 @@
     },
     overcurrent: {
       objective: 'Operate through OVERCURRENT by managing load and droop and avoid trip',
-      successCondition: (s) => s.breaker === 'CLOSED' && s.faults.has('OVERCURRENT') && s.currentA < 1400,
+      successCondition: (s) =>
+      s.breaker === 'CLOSED' &&
+      s.faults.has('OVERCURRENT') &&
+      s.scenario &&
+      s.scenario.injectionPerformed === true &&
+      s.currentA < 1400 &&
+     (s.scenario.overcurrentStableTime || 0) >= 3.0,
       failureCondition: (s) => s.scenario.trips > 0,
       scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, faultRecovery: true },
       debriefTemplate: (score, s) => `OVERCURRENT managed without trip. Excellent load and protection awareness.`,
