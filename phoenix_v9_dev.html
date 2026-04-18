@@ -871,7 +871,7 @@
       // Trip snapshot integrity check
       if(this.state.tripSnapshot){
         const snap = this.state.tripSnapshot;
-        const keys = ['dv','df','dp','current','faults','scenario'];
+        const keys = ['dv','df','dphi','current','faults','scenarioId'];
         const missing = keys.filter(k => !(k in snap));
         lines.push(missing.length === 0 ? 'Trip snapshot integrity: OK' : `Trip snapshot missing: ${missing.join(', ')}`);
       } else {
