@@ -36,21 +36,22 @@
 - No promotion to runtime authority yet; further validation required.
 
 
-## Current Phase
+Current Phase
 - [x] Repo live on GitHub Pages
 - [x] README added
 - [x] Authority docs added
-- [x] Canonical runtime confirmed as `index.html`
+- [x] Canonical runtime confirmed as index.html
 - [x] Baseline file locked
 - [x] Step 1 - Explicit state machine scaffold integrated
 - [x] Step 1A - Deterministic reset baseline validated
 - [x] Step 2 - Command layer / next action integration
-- [x] Step 2A - Closed-state display truth patch applied, awaiting validation
-- [x] Step 3 - State-aware breaker button labels
-- [ ] Step 4 - Quickstart scenario runner
-- [ ] Step 5 - Failure scenario runner
-- [ ] Step 6 - Trip summary + chart markers
-- [ ] Step 7 - Post-sync semantics cleanup / UI polish
+- [x] Step 2A - Closed-state display truth patch applied
+- [x] Step 3 - Event-driven sync transitions & enhanced guidance
+- [x] Step 4 - State-aware breaker button labels refined
+- [x] Step 5 - Scenario runner baseline present
+- [x] Step 6 - Trip summary + chart markers baseline present
+- [ ] Step 6B - Scenario sequencing hardening and electrical-validation cleanup
+- [ ] Step 7 - Post-sync semantics cleanup / UI polish / final promotion validation
 
 ## Working Rule
 - `index.html` remains the shipped runtime source of truth.
