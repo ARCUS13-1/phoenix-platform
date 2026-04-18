@@ -32,7 +32,7 @@
 - phoenix_v9_dev.html` now includes:
 - Event‑driven sync window transitions via `SYNC_READY` and `SYNC_LOST`.
 - Enhanced guidance panel with mode‑specific explanations.
-- All v9.5 features (machine state/event scaffolding, deterministic reset, dispatch‑driven controls, physics hooks) preserved.
+- Enhanced machine state/event scaffolding, deterministic reset, dispatch‑driven controls, physics hooks) preserved.
 - No promotion to runtime authority yet; further validation required.
 
 
@@ -46,7 +46,7 @@
 - [x] Step 1A - Deterministic reset baseline validated
 - [x] Step 2 - Command layer / next action integration
 - [x] Step 2A - Closed-state display truth patch applied, awaiting validation
-- [ ] Step 3 - State-aware breaker button labels
+- [x] Step 3 - State-aware breaker button labels
 - [ ] Step 4 - Quickstart scenario runner
 - [ ] Step 5 - Failure scenario runner
 - [ ] Step 6 - Trip summary + chart markers
