@@ -57,6 +57,10 @@
     .kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
     .kv .tiny{padding:9px 10px;border:1px solid rgba(255,255,255,.05);border-radius:12px;background:rgba(255,255,255,.02)}
     .tiny .k{font-size:10px;color:var(--muted);text-transform:uppercase}.tiny .v{margin-top:4px;font-weight:800}
+    /* Fine trim controls */
+    .nudge-row{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px}
+    .btn-nudge{appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--cyan);padding:6px 4px;border-radius:8px;font-size:10px;font-weight:700;line-height:1.2;white-space:nowrap}
+    .btn-nudge:active{transform:translateY(1px) scale(.98)}
     .bus{padding:10px;border-radius:14px;border:1px solid var(--line);background:linear-gradient(180deg,#0e1828,#0d1624)}
     .busbar{height:10px;border-radius:999px;background:#1f324d;position:relative;overflow:hidden;margin:12px 0}
     .busbar .flow{position:absolute;inset:0;width:0%;background:linear-gradient(90deg,transparent,rgba(89,215,255,.85),transparent);animation:flow 1s linear infinite}
@@ -167,10 +171,24 @@
             <div class="control">
               <div class="line"><span class="name">Freq setpoint</span><span id="govRead" class="read">60.00 Hz</span></div>
               <input id="govSlider" type="range" min="58" max="62" step="0.01" value="60.00" />
+              <!-- Fine trim buttons for frequency setpoint -->
+              <div class="nudge-row">
+                <button class="btn-nudge" data-target="gov" data-step="0.10" data-dir="-1">–0.10</button>
+                <button class="btn-nudge" data-target="gov" data-step="0.01" data-dir="-1">–0.01</button>
+                <button class="btn-nudge" data-target="gov" data-step="0.01" data-dir="1">+0.01</button>
+                <button class="btn-nudge" data-target="gov" data-step="0.10" data-dir="1">+0.10</button>
+              </div>
             </div>
             <div class="control">
               <div class="line"><span class="name">Voltage setpoint</span><span id="avrRead" class="read">13.80 kV</span></div>
               <input id="avrSlider" type="range" min="10" max="15.5" step="0.01" value="13.80" />
+              <!-- Fine trim buttons for voltage setpoint -->
+              <div class="nudge-row">
+                <button class="btn-nudge" data-target="avr" data-step="0.10" data-dir="-1">–0.10</button>
+                <button class="btn-nudge" data-target="avr" data-step="0.01" data-dir="-1">–0.01</button>
+                <button class="btn-nudge" data-target="avr" data-step="0.01" data-dir="1">+0.01</button>
+                <button class="btn-nudge" data-target="avr" data-step="0.10" data-dir="1">+0.10</button>
+              </div>
             </div>
             <div class="kv">
               <div class="tiny"><div class="k">Slip</div><div id="kvSlip" class="v">0.000 Hz</div></div>
@@ -474,6 +492,8 @@
   const app = {
     state: createInitialState(),
     tabs:['sim','analysis','timing','telemetry'],
+    /** interval id for nudge repeat */
+    nudgeInterval: null,
     els:{},
     init(){
       this.cache();
@@ -517,6 +537,57 @@
       this.els.govSlider.addEventListener('input', e=>{ this.state.govSet = parseFloat(e.target.value); this.els.govRead.textContent = this.state.govSet.toFixed(2)+' Hz'; });
       this.els.avrSlider.addEventListener('input', e=>{ this.state.avrSet = parseFloat(e.target.value); this.els.avrRead.textContent = this.state.avrSet.toFixed(2)+' kV'; });
       document.querySelectorAll('[data-fault]').forEach(b=>b.addEventListener('click', ()=>this.injectFault(b.dataset.fault)));
+
+      // Bind fine trim nudge buttons for governor and AVR
+      const nudgeBtns = document.querySelectorAll('.btn-nudge');
+      nudgeBtns.forEach(btn => {
+        const target = btn.dataset.target;
+        const step = parseFloat(btn.dataset.step);
+        const dir = parseFloat(btn.dataset.dir);
+        const delta = dir * step;
+        // On mousedown/touchstart start repeat if held
+        const startRepeat = (evt) => {
+          evt.preventDefault();
+          this.adjustValue(target, delta);
+          if (this.nudgeInterval) clearInterval(this.nudgeInterval);
+          this.nudgeInterval = setInterval(() => { this.adjustValue(target, delta); }, 150);
+        };
+        const stopRepeat = () => {
+          if (this.nudgeInterval) { clearInterval(this.nudgeInterval); this.nudgeInterval = null; }
+        };
+        btn.addEventListener('mousedown', startRepeat);
+        btn.addEventListener('touchstart', startRepeat);
+        ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev => {
+          btn.addEventListener(ev, stopRepeat);
+        });
+      });
+    },
+
+    /**
+     * Adjusts the governor or AVR setpoint by a delta, updates the slider and display, and ensures bounds.
+     * @param {string} target - 'gov' for frequency or 'avr' for voltage
+     * @param {number} delta - The signed increment to apply
+     */
+    adjustValue(target, delta){
+      if(target === 'gov'){
+        const min = parseFloat(this.els.govSlider.min);
+        const max = parseFloat(this.els.govSlider.max);
+        let newVal = this.state.govSet + delta;
+        newVal = Math.min(max, Math.max(min, newVal));
+        this.state.govSet = newVal;
+        this.els.govSlider.value = newVal.toFixed(2);
+        this.els.govRead.textContent = newVal.toFixed(2) + ' Hz';
+      } else if(target === 'avr'){
+        const min = parseFloat(this.els.avrSlider.min);
+        const max = parseFloat(this.els.avrSlider.max);
+        let newVal = this.state.avrSet + delta;
+        newVal = Math.min(max, Math.max(min, newVal));
+        this.state.avrSet = newVal;
+        this.els.avrSlider.value = newVal.toFixed(2);
+        this.els.avrRead.textContent = newVal.toFixed(2) + ' kV';
+      }
+      // vibrate lightly on each nudge
+      this.vibrate(5);
     },
 
     deriveContext(){
@@ -792,12 +863,37 @@
       const dockBtn = document.getElementById('btnToggleBreakerDock');
       if (!btn) return;
       let label = 'TOGGLE BRKR';
-      if (this.state.breaker === 'TRIPPED') label = 'RESET BREAKER';
-      else if (this.state.breaker === 'CLOSED') label = 'OPEN BREAKER';
-      else if (this.state.machine.mode === MODE.SYNC_WINDOW) label = 'CLOSE BREAKER';
-      else label = 'CLOSE BLOCKED';
+      // Determine breaker button label based on current machine and breaker state
+      // Tripped breaker gets a reset label
+      if (this.state.breaker === 'TRIPPED') {
+        label = 'RESET BREAKER';
+        btn.disabled = false;
+      }
+      // While physically closing, show closing status and disable button
+      else if (this.state.machine.mode === MODE.BREAKER_CLOSING) {
+        label = 'CLOSING…';
+        btn.disabled = true;
+      }
+      // Closed breaker can be opened
+      else if (this.state.breaker === 'CLOSED') {
+        label = 'OPEN BREAKER';
+        btn.disabled = false;
+      }
+      // Ready to close during sync window
+      else if (this.state.machine.mode === MODE.SYNC_WINDOW) {
+        label = 'CLOSE BREAKER';
+        btn.disabled = false;
+      }
+      // In all other cases, closing is blocked
+      else {
+        label = 'CLOSE BLOCKED';
+        btn.disabled = true;
+      }
       btn.textContent = label;
-      if (dockBtn) dockBtn.textContent = label;
+      if (dockBtn) {
+        dockBtn.textContent = label;
+        dockBtn.disabled = btn.disabled;
+      }
     },
 
     loadScenario(){
