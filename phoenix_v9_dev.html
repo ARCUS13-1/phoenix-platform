@@ -1403,18 +1403,21 @@
       const def = SCENARIOS[id];
       // Initialize scenario state with additional flags for arm/injection
       this.state.scenario = {
-        active: true,
-        id: id,
-        objective: def.objective,
-        startTime: Date.now(),
-        score: 0,
-        unsafeAttempts: 0,
-        trips: 0,
-        syncTime: 0,
-        definition: def,
-        armTriggered: false,
-        injectionPerformed: false
-      };
+      active: true,
+      id: id,
+      objective: def.objective,
+      startTime: Date.now(),
+      score: 0,
+      unsafeAttempts: 0,
+      trips: 0,
+      syncTime: 0,
+      definition: def,
+      armTriggered: false,
+      injectionPerformed: false,
+      overcurrentStableTime: 0,
+      overcurrentInjectedAt: null,
+      overcurrentStableLogged: false
+    };
       this.log(`SCENARIO STARTED: ${id.toUpperCase()} — ${def.objective}`, 'good');
       // Provide tactile feedback to indicate scenario start
       this.vibrate([30,20,30]);
