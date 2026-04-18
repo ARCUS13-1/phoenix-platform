@@ -1,9 +1,9 @@
 ## Phoenix Platform Progress
 
 ### Runtime Authority
-- Canonical runtime file: `index.html`
-- Locked baseline: `phoenix_v8_baseline_locked.html`
-- Development authority: `phoenix_v9_dev.html`
+- **Canonical runtime file:** `index.html`
+- **Locked baseline:** `phoenix_v8_baseline_locked.html`
+- **Development authority:** `phoenix_v9_dev.html`
 
 ### Current Runtime Snapshot
 `index.html` remains the shipped v8 runtime and still serves as the authoritative public baseline.
@@ -23,6 +23,10 @@
 - Breaker button clarity improvements
 - Trip summary panel
 - Trend event markers
+- Lower-load control for overcurrent recovery
+- Scope-status indicator near the synchroscope
+- `runFunctionChecks()` dev helper
+- Overcurrent stable-window tracking and display in the scenario state panel
 
 ### Current Phase
 - [x] Step 1 - Explicit state machine scaffold
@@ -33,14 +37,17 @@
 - [x] Step 4 - State-aware breaker button labels + closing-state clarity
 - [x] Step 5 - Scenario runner scaffolding
 - [x] Step 6 - Trip summary + chart markers
-- [ ] Step 6B - Scenario/physics truth alignment and overcurrent drill correction
+- [x] Step 6B - Scenario/physics truth alignment and overcurrent drill correction
 - [ ] Step 7 - Post-sync semantics cleanup / UI polish
-- [ ] Final validation for promotion into `index.html`
+- [ ] Final manual validation for promotion into `index.html`
 
 ### Working Rule
 - `index.html` remains shipped runtime authority.
 - `phoenix_v9_dev.html` is the active development authority.
 - No feature is released until validation passes and docs/manifests are updated.
 
-### Current Blocking Risk
-- OVERCURRENT drill remains pedagogically inconsistent because current is still hard-forced to trip after post-close injection.
+### Current Blocking Risks
+- Manual scenario validation is still required across all six drills: `quickstart`, `vsag`, `phaseerr`, `overcurrent`, `stuck`, `combined`.
+- Mobile layout still needs live verification for the scope-status line and scenario stable-timer text.
+- Overcurrent drill logic is now teachable and no longer hard-forced on injection, but it still needs live tuning validation for difficulty and operator clarity.
+- Final Step 7 UI polish and promotion review remain open.
