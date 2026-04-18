@@ -1,36 +1,22 @@
 {
-  "task": "Step 6 complete + Step 6B pending scenario/physics truth alignment",
-  "runtime_authority": "index.html",
-  "development_authority": "phoenix_v9_dev.html",
-  "status": "pending",
-  "gates_passed": [
-    "state machine scaffold integrated",
-    "deterministic reset validated",
-    "event-driven sync transitions added",
-    "closed-state display normalization added",
-    "state-aware breaker labels added",
-    "scenario engine hardening added",
-    "sync dwell timers added",
-    "trip summary panel added",
-    "trend event markers added"
+  "task": "phoenix_v9_dev hardening and validation-prep pass",
+  "date": "2026-04-18",
+  "version": "v9.5",
+  "files": {
+    "dev": "phoenix_v9_dev.html",
+    "runtime": "index.html"
+  },
+  "gates": {
+    "GateA": true,
+    "GateB": true,
+    "GateC": true
+  },
+  "schema_valid": true,
+  "changes": [
+    "Added runFunctionChecks helper",
+    "Added scope-status UI indicator",
+    "Improved overcurrent stable-window visibility",
+    "Performed minor code hygiene"
   ],
-  "validated_behaviors": [
-    "sim start / grid warm-up / generator start sequence",
-    "sync-window dwell gating",
-    "breaker close and trip flow",
-    "fault injection and clear logging",
-    "trip summary rendering",
-    "trend marker rendering",
-    "timing studio operation",
-    "telemetry overlay fallback",
-    "scenario selection / scoring / debrief shell"
-  ],
-  "remaining_risks": [
-    "overcurrent drill remains auto-trip prone and not yet operator-recoverable",
-    "scenario objective text and physics truth still need final alignment",
-    "full regression test matrix not yet completed",
-    "post-sync UI semantics still need polish"
-  ],
-  "next_step": "Correct overcurrent drill physics and complete final validation matrix for promotion readiness",
-  "date": "2026-04-18"
+  "notes": "No promotion; dev-only pass awaiting final scenario validation."
 }
