@@ -1,30 +1,22 @@
 {
-  "task": "v9.5 development – touch precision controls & breaker clarity",
+  "task": "v9.5 step6b - scenario sequencing and electrical validation hardening",
   "runtime_authority": "index.html",
   "development_authority": "phoenix_v9_dev.html",
-  "status": "pending",
-  "gates_passed": [
-    "State machine scaffold integrated",
-    "Deterministic reset validated",
-    "Event-driven sync transitions & enhanced guidance",
-    "State-aware breaker button labels refined with closing state"
-  ],
+  "status": "in_progress",
   "validated_behaviors": [
-    "Sim start, grid warm-up, generator start/stop sequence",
-    "Safe sync gating based on ΔV/Δf/Δφ thresholds",
-    "Breaker open/close/trip/reset logic and new closing state",
-    "Fine trim nudge buttons adjust frequency and voltage precisely",
-    "Fault injection and clearing",
-    "Log replay, clear and export",
-    "Timing studio and telemetry overlay",
-    "Scenario selection, guidance and debrief panels, training badge and scoring"
+    "sim start and deterministic reset",
+    "grid warmup to grid ready",
+    "generator start and sync-window entry",
+    "breaker close into parallel",
+    "trip summary and chart markers baseline present",
+    "guidance, debrief, replay, export, timing and telemetry retained"
   ],
   "remaining_risks": [
-    "Potential overshoot if nudge buttons are held too long on slow devices",
-    "Accessibility (ARIA) for new buttons still untested",
-    "Trip summary and chart marker features remain unimplemented",
-    "Prime-mover profile system and visual aids deferred"
+    "overcurrent drill injects fault before valid post-sync state",
+    "scenario actions still use timer sequencing instead of state gating",
+    "electrical model remains heuristic rather than first-principles solved",
+    "sync-ready dwell timing not yet implemented"
   ],
-  "next_step": "Implement scenario failure trip summaries and chart markers (Step 6) while continuing post-sync UI polish (Step 7)",
+  "next_step": "repair scenario engine, add dwell gating, enforce electrical invariants, run validation matrix before promotion",
   "date": "2026-04-18"
 }
