@@ -1636,6 +1636,25 @@
           Ia += ocDroop + ocLoad;
         }
         s.currentA = Ia;
+        if (s.scenario && s.scenario.active && s.scenario.id === 'overcurrent') {
+        const sc = s.scenario;
+        const overcurrentStable =
+          sc.injectionPerformed &&
+          s.breaker === 'CLOSED' &&
+          s.faults.has('OVERCURRENT') &&
+          s.currentA < 1400;
+
+        if (overcurrentStable) {
+          sc.overcurrentStableTime += dt;
+          if (sc.overcurrentStableTime >= 3.0 && !sc.overcurrentStableLogged) {
+            this.log('OVERCURRENT STABLE WINDOW ACHIEVED', 'scenario');
+            sc.overcurrentStableLogged = true;
+          }
+        } else {
+          sc.overcurrentStableTime = 0;
+          sc.overcurrentStableLogged = false;
+        }
+      }
         // Protection trip on excessive mismatch or sustained overcurrent after post‑close hold expires. Use actual mismatch values here, not UI‑normalized.
         if(s.postCloseHold <= 0 && (Math.abs(dV) * 1000 > 1000 || Math.abs(dF) > 0.2 || s.currentA > 1500)){
           this.tripBreaker(`Protection trip. ΔV ${(Math.abs(dV) * 1000).toFixed(0)} V, Δf ${Math.abs(dF).toFixed(3)} Hz, I ${s.currentA.toFixed(0)} A`);
