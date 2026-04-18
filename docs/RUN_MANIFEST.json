@@ -6,6 +6,7 @@
     "dev": "phoenix_v9_dev.html",
     "runtime": "index.html"
   },
+  "status": "pending_manual_validation",
   "gates": {
     "GateA": true,
     "GateB": true,
@@ -16,7 +17,24 @@
     "Added runFunctionChecks helper",
     "Added scope-status UI indicator",
     "Improved overcurrent stable-window visibility",
+    "Added lower-load control for operator recovery",
+    "Hardened overcurrent success logic with 3.0 s stable dwell requirement",
     "Performed minor code hygiene"
   ],
-  "notes": "No promotion; dev-only pass awaiting final scenario validation."
+  "validated_behaviors": [
+    "State machine and start functions present",
+    "Sync-gating timers present in state and physics loop",
+    "Trip snapshot captures dv, df, dphi, current, faults, and scenarioId",
+    "All scenarios define armCondition, injectCondition, successCondition, and failureCondition",
+    "Overcurrent injects only after breaker closure",
+    "Overcurrent success requires injection plus stable current below 1400 A for 3.0 s",
+    "Scope-status element and scenario-state panel elements are present"
+  ],
+  "remaining_risks": [
+    "Manual scenario validation still required across all drills",
+    "Mobile layout and readability need live verification",
+    "Final Step 7 UI polish not complete",
+    "No promotion to index.html yet"
+  ],
+  "notes": "Dev-only pass awaiting final manual scenario validation before promotion."
 }
