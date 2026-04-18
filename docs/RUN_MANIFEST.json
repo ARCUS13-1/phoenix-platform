@@ -1,22 +1,36 @@
 {
-  "task": "v9.5 step6b - scenario sequencing and electrical validation hardening",
+  "task": "Step 6 complete + Step 6B pending scenario/physics truth alignment",
   "runtime_authority": "index.html",
   "development_authority": "phoenix_v9_dev.html",
-  "status": "in_progress",
+  "status": "pending",
+  "gates_passed": [
+    "state machine scaffold integrated",
+    "deterministic reset validated",
+    "event-driven sync transitions added",
+    "closed-state display normalization added",
+    "state-aware breaker labels added",
+    "scenario engine hardening added",
+    "sync dwell timers added",
+    "trip summary panel added",
+    "trend event markers added"
+  ],
   "validated_behaviors": [
-    "sim start and deterministic reset",
-    "grid warmup to grid ready",
-    "generator start and sync-window entry",
-    "breaker close into parallel",
-    "trip summary and chart markers baseline present",
-    "guidance, debrief, replay, export, timing and telemetry retained"
+    "sim start / grid warm-up / generator start sequence",
+    "sync-window dwell gating",
+    "breaker close and trip flow",
+    "fault injection and clear logging",
+    "trip summary rendering",
+    "trend marker rendering",
+    "timing studio operation",
+    "telemetry overlay fallback",
+    "scenario selection / scoring / debrief shell"
   ],
   "remaining_risks": [
-    "overcurrent drill injects fault before valid post-sync state",
-    "scenario actions still use timer sequencing instead of state gating",
-    "electrical model remains heuristic rather than first-principles solved",
-    "sync-ready dwell timing not yet implemented"
+    "overcurrent drill remains auto-trip prone and not yet operator-recoverable",
+    "scenario objective text and physics truth still need final alignment",
+    "full regression test matrix not yet completed",
+    "post-sync UI semantics still need polish"
   ],
-  "next_step": "repair scenario engine, add dwell gating, enforce electrical invariants, run validation matrix before promotion",
+  "next_step": "Correct overcurrent drill physics and complete final validation matrix for promotion readiness",
   "date": "2026-04-18"
 }
