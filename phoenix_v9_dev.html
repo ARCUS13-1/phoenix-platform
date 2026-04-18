@@ -1046,10 +1046,15 @@
           if(def.injectCondition(s)){
             this.log(`SCENARIO INJECT CHECK — ${sc.id} injectCondition met`, 'scenario');
             if(Array.isArray(def.faultIds)){
-              def.faultIds.forEach(fid => this.injectFault(fid));
-            }
-            sc.injectionPerformed = true;
-            this.log(`SCENARIO INJECTION COMPLETE — ${sc.id}`, 'scenario');
+           def.faultIds.forEach(fid => this.injectFault(fid));
+         }
+           sc.injectionPerformed = true;
+
+          if (sc.id === 'overcurrent') {
+          sc.overcurrentInjectedAt = Date.now();
+        }
+
+          this.log(`SCENARIO INJECTION COMPLETE — ${sc.id}`, 'scenario');
           }
         } catch(err){ console.error('injectCondition error:', err); }
       }
