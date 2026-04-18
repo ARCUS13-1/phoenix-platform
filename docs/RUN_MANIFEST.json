@@ -1,37 +1,30 @@
 {
-  "task": "v9 development consolidation and event-driven sync integration",
+  "task": "v9.5 development – touch precision controls & breaker clarity",
   "runtime_authority": "index.html",
   "development_authority": "phoenix_v9_dev.html",
   "status": "pending",
-  "changes": [
-    "Added explicit SYNC_READY and SYNC_LOST events to the state machine",
-    "Rewired sync transitions to be event-driven and deterministic",
-    "Expanded guidance panel with mode-specific rationale and post-trip hints",
-    "Implemented state-aware breaker button labels",
-    "Normalized closed-state voltage and frequency display"
+  "gates_passed": [
+    "State machine scaffold integrated",
+    "Deterministic reset validated",
+    "Event-driven sync transitions & enhanced guidance",
+    "State-aware breaker button labels refined with closing state"
   ],
   "validated_behaviors": [
     "Sim start, grid warm-up, generator start/stop sequence",
     "Safe sync gating based on ΔV/Δf/Δφ thresholds",
-    "Breaker close and trip logic",
+    "Breaker open/close/trip/reset logic and new closing state",
+    "Fine trim nudge buttons adjust frequency and voltage precisely",
     "Fault injection and clearing",
     "Log replay, clear and export",
-    "Timing studio and live telemetry overlay",
-    "Scenario selection, guidance and debrief panels",
-    "Training badge and scoring framework"
+    "Timing studio and telemetry overlay",
+    "Scenario selection, guidance and debrief panels, training badge and scoring"
   ],
   "remaining_risks": [
-    "Potential race conditions if SYNC_READY/SYNC_LOST events fire too frequently",
-    "Incomplete scenario runner scaffolding and trip summary features",
-    "Minor UI inconsistencies during breaker closing phase",
-    "Phase/slip display during parallel operation requires verification"
+    "Potential overshoot if nudge buttons are held too long on slow devices",
+    "Accessibility (ARIA) for new buttons still untested",
+    "Trip summary and chart marker features remain unimplemented",
+    "Prime-mover profile system and visual aids deferred"
   ],
-  "next_steps": [
-    "Implement dwell time gating for sync events",
-    "Refine scenario guidance to override generic guidance when active",
-    "Develop scenario runner logic with quickstart and failure scenarios",
-    "Add trip summary and chart markers",
-    "Perform thorough mobile/desktop validation and UI polish"
-  ],
+  "next_step": "Implement scenario failure trip summaries and chart markers (Step 6) while continuing post-sync UI polish (Step 7)",
   "date": "2026-04-18"
 }
