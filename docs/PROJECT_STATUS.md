@@ -2,8 +2,9 @@
 
 ## Runtime Authority
 - **Canonical runtime file:** `index.html`
-- **Locked rollback baseline:** `phoenix_v8_baseline_locked.html`
-- **Active development sandbox:** `phoenix_v9_dev.html`
+- **Current locked rollback:** `phoenix_v9_5_beta_locked.html`
+- **Historical baseline:** `phoenix_v8_baseline_locked.html`
+- **Active development sandbox:** `phoenix_v10_dev.html`
 
 ## Current Runtime Snapshot
 `index.html` is the live single-file public beta runtime and currently includes:
@@ -23,10 +24,11 @@
 - Telemetry / ghost-frequency overlay
 - Fine-trim governor / AVR controls
 - Lower-load recovery support
+- Scope-status indicator
 - Mobile-safe single-file operation
 
 ## Current Development Snapshot
-`phoenix_v9_dev.html` remains the active development sandbox for future non-shipped changes and promotion candidates.
+`phoenix_v10_dev.html` is the active development sandbox for future non-shipped changes and promotion candidates.
 
 ## Current Phase
 - [x] Step 1 - Explicit state machine scaffold
@@ -48,8 +50,10 @@
 - [ ] Stable release candidate review
 
 ## Working Rule
-- `index.html` remains shipped runtime authority.
-- `phoenix_v9_dev.html` is the active development authority.
+- `index.html` remains the shipped runtime authority.
+- `phoenix_v9_5_beta_locked.html` is the current rollback target for the promoted beta.
+- `phoenix_v8_baseline_locked.html` remains the historical baseline.
+- `phoenix_v10_dev.html` is the active development sandbox.
 - No feature is released until validation passes and docs / manifests are updated.
 
 ## Public Beta Notes
@@ -62,12 +66,12 @@
 - Public beta feedback may surface scenario edge cases not caught in manual validation.
 - Mobile readability should continue to be checked under real-world device testing.
 - Guidance wording may still need refinement as broader testers interact with the drills.
-- Future fixes should continue in `phoenix_v9_dev.html` and only be promoted after validation.
+- Future fixes should continue in `phoenix_v10_dev.html` and only be promoted after validation.
 
 ## Immediate Next Steps
 1. Enable GitHub issue templates
 2. Enable GitHub Discussions
 3. Begin structured beta feedback collection
 4. Triage scenario logic, UI clarity, and mobile issues
-5. Continue development in `phoenix_v9_dev.html`
+5. Continue development in `phoenix_v10_dev.html`
 6. Promote only after the next validated pass
