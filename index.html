@@ -805,8 +805,8 @@
       // Result: pending if still active; else success/failed based on the recorded end reason
       let res = 'PENDING';
       if(!sc.active){
-        // Use the endReason flag for accuracy; timeout and trip both count as failed
-        const r = sc.endReason;
+        // Use the scenarioEndReason flag for accuracy; timeout and trip both count as failed
+        const r = sc.scenarioEndReason;
         if (r === 'success') res = 'SUCCESS'; else res = 'FAILED';
       }
       this.els.scResult.textContent = res;
@@ -1088,7 +1088,7 @@
       // Check timeout if defined
       if(def.maxDurationSec && elapsed > def.maxDurationSec){
         // Mark scenario end reason before ending
-        sc.endReason = 'timeout';
+        sc.scenarioEndReason = 'timeout';
         this.log('Scenario timed out.', 'warn');
         this.endScenario(false);
         return;
@@ -1097,7 +1097,7 @@
       try{
         if(typeof def.failureCondition === 'function' && def.failureCondition(s)){
           // Mark trip failure reason
-          sc.endReason = 'trip';
+          sc.scenarioEndReason = 'trip';
           this.endScenario(false);
           return;
         }
@@ -1106,7 +1106,7 @@
       try{
         if(typeof def.successCondition === 'function' && def.successCondition(s)){
           // Mark success reason
-          sc.endReason = 'success';
+          sc.scenarioEndReason = 'success';
           this.endScenario(true);
           return;
         }
@@ -1197,7 +1197,7 @@
         this.state.scenario.trips++;
         this.state.scenario.unsafeAttempts++;
         // On any protective trip during a scenario, the end reason should be recorded as a trip
-        this.state.scenario.endReason = 'trip';
+        this.state.scenario.scenarioEndReason = 'trip';
         this.endScenario(false);
       }
       // Show trip summary panel
@@ -1537,7 +1537,7 @@
       overcurrentStableLogged: false
         ,
         // Reason for scenario termination: success, timeout, or trip. Initially null.
-        endReason: null
+        scenarioEndReason: null
     };
       this.log(`SCENARIO STARTED: ${id.toUpperCase()} — ${def.objective}`, 'good');
       // Provide tactile feedback to indicate scenario start
@@ -1552,7 +1552,7 @@
       const duration = (Date.now() - this.state.scenario.startTime) / 1000;
       this.state.scenario.syncTime = duration;
       // Determine end reason from scenario state. Use provided flag if available.
-      const reason = this.state.scenario.endReason || (success ? 'success' : 'trip');
+      const reason = this.state.scenario.scenarioEndReason || (success ? 'success' : 'trip');
       // Compute a base score: begin from 100 points, subtract unsafe and trip penalties, and add a success bonus
       let baseScore = 100;
       baseScore -= this.state.scenario.unsafeAttempts * 15;
@@ -1744,7 +1744,7 @@
           this.log('Breaker is CLOSED.', 'closed');
           if (this.state.scenario && this.state.scenario.active && this.state.scenario.definition.successCondition(this.state)) {
             // When the breaker closes into a successful scenario, record the success reason before ending
-            this.state.scenario.endReason = 'success';
+            this.state.scenario.scenarioEndReason = 'success';
             this.endScenario(true);
           }
         }
