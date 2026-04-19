@@ -3,8 +3,9 @@
 ## [2026-04-19] - Public Beta Promotion
 
 ### Promoted
-- Promoted the tested v9.5 beta build from `phoenix_v9_dev.html` into `index.html`
+- Promoted the tested v9.5 beta build into `index.html`
 - Updated the public GitHub Pages runtime to the current tested beta build
+- Locked the promoted runtime as `phoenix_v9_5_beta_locked.html`
 
 ### Added
 - State-aware scenario engine using `armCondition`, `injectCondition`, `faultIds`, and `maxDurationSec`
@@ -41,10 +42,17 @@
 
 ### Documentation
 - Updated README to reflect public beta state
+- Updated `docs/SOURCE_OF_TRUTH.md` to reflect the new runtime-role structure
 - Updated `docs/PROJECT_STATUS.md` to reflect promotion into `index.html`
 - Updated `docs/RUN_MANIFEST.json` to reflect current beta runtime status
 
-### Notes
+### Runtime Roles
 - `index.html` is now the live public beta runtime authority
-- `phoenix_v9_dev.html` remains the active development sandbox
-- Future changes should continue in `phoenix_v9_dev.html` and only move into `index.html` after validation
+- `phoenix_v9_5_beta_locked.html` is the current locked rollback snapshot
+- `phoenix_v8_baseline_locked.html` remains the historical baseline
+- `phoenix_v10_dev.html` is now the active development sandbox
+
+### Notes
+- Public beta is now live from `index.html`
+- Future changes should continue in `phoenix_v10_dev.html` and only move into `index.html` after validation
+- Rollback, historical baseline, and development files are not runtime-authoritative unless explicitly promoted
