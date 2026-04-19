@@ -1,34 +1,34 @@
-## Phoenix Platform Progress
+# Phoenix Platform Progress
 
-### Runtime Authority
+## Runtime Authority
 - **Canonical runtime file:** `index.html`
-- **Locked baseline:** `phoenix_v8_baseline_locked.html`
-- **Development authority:** `phoenix_v9_dev.html`
+- **Locked rollback baseline:** `phoenix_v8_baseline_locked.html`
+- **Active development sandbox:** `phoenix_v9_dev.html`
 
-### Current Runtime Snapshot
-`index.html` remains the shipped v8 runtime and still serves as the authoritative public baseline.
+## Current Runtime Snapshot
+`index.html` is the live single-file public beta runtime and currently includes:
 
-### Current Development Snapshot
-`phoenix_v9_dev.html` now includes:
-- Explicit machine states via `MODE`
-- Event routing via `EVENT`
-- Deterministic reset helpers
-- Dispatch-driven control flow
-- Event-driven sync transitions
-- Dwell-time gating for sync window entry/exit
-- State-aware scenario engine
-- Guidance + debrief panels
-- Training badge and scoring path
-- Fine-trim governor / AVR nudges
-- Breaker button clarity improvements
+- Grid ↔ generator synchronizing
+- Synchroscope + sync close window
+- Explicit mode / event state machine behavior
+- Dwell-time sync gating
+- Breaker OPEN / CLOSED / TRIPPED behavior
+- Fault injection and fault clear
+- Scenario-based operator drills
+- Operator guidance panel
 - Trip summary panel
-- Trend event markers
-- Lower-load control for overcurrent recovery
-- Scope-status indicator near the synchroscope
-- `runFunctionChecks()` dev helper
-- Overcurrent stable-window tracking and display in the scenario state panel
+- Trend markers
+- Analysis & logging
+- Timing Studio
+- Telemetry / ghost-frequency overlay
+- Fine-trim governor / AVR controls
+- Lower-load recovery support
+- Mobile-safe single-file operation
 
-### Current Phase
+## Current Development Snapshot
+`phoenix_v9_dev.html` remains the active development sandbox for future non-shipped changes and promotion candidates.
+
+## Current Phase
 - [x] Step 1 - Explicit state machine scaffold
 - [x] Step 1A - Deterministic reset baseline
 - [x] Step 2 - Command layer / next action integration
@@ -37,17 +37,37 @@
 - [x] Step 4 - State-aware breaker button labels + closing-state clarity
 - [x] Step 5 - Scenario runner scaffolding
 - [x] Step 6 - Trip summary + chart markers
-- [x] Step 6B - Scenario/physics truth alignment and overcurrent drill correction
-- [ ] Step 7 - Post-sync semantics cleanup / UI polish
-- [ ] Final manual validation for promotion into `index.html`
+- [x] Step 6B - Scenario / physics truth alignment and overcurrent drill correction
+- [x] Step 7 - Failure semantics, blocker guidance, and beta promotion preparation
+- [x] Manual validation completed for current promotion build
+- [x] Promoted tested v9.5 beta build into `index.html`
+- [ ] GitHub issue templates enabled
+- [ ] GitHub Discussions enabled
+- [ ] Structured public beta intake cycle active
+- [ ] Post-beta defect hardening pass
+- [ ] Stable release candidate review
 
-### Working Rule
+## Working Rule
 - `index.html` remains shipped runtime authority.
 - `phoenix_v9_dev.html` is the active development authority.
-- No feature is released until validation passes and docs/manifests are updated.
+- No feature is released until validation passes and docs / manifests are updated.
 
-### Current Blocking Risks
-- Manual scenario validation is still required across all six drills: `quickstart`, `vsag`, `phaseerr`, `overcurrent`, `stuck`, `combined`.
-- Mobile layout still needs live verification for the scope-status line and scenario stable-timer text.
-- Overcurrent drill logic is now teachable and no longer hard-forced on injection, but it still needs live tuning validation for difficulty and operator clarity.
-- Final Step 7 UI polish and promotion review remain open.
+## Public Beta Notes
+- Public beta is active.
+- Feedback should be routed through GitHub Issues and GitHub Discussions.
+- Direct tester feedback is still useful, but repo-tracked feedback is preferred for reproducibility.
+- Analytics are not currently authoritative because no official beta telemetry layer has been documented yet.
+
+## Current Risks
+- Public beta feedback may surface scenario edge cases not caught in manual validation.
+- Mobile readability should continue to be checked under real-world device testing.
+- Guidance wording may still need refinement as broader testers interact with the drills.
+- Future fixes should continue in `phoenix_v9_dev.html` and only be promoted after validation.
+
+## Immediate Next Steps
+1. Enable GitHub issue templates
+2. Enable GitHub Discussions
+3. Begin structured beta feedback collection
+4. Triage scenario logic, UI clarity, and mobile issues
+5. Continue development in `phoenix_v9_dev.html`
+6. Promote only after the next validated pass
