@@ -31,7 +31,7 @@ The single shipped runtime source of truth is:
 
 - `index.html`
 
-Development or rollback files may exist in the repo, but they are not authoritative unless explicitly promoted and reflected in:
+Development, rollback, or historical files may exist in the repo, but they are not authoritative unless explicitly reflected in:
 
 - `docs/SOURCE_OF_TRUTH.md`
 - `docs/PROJECT_STATUS.md`
@@ -42,15 +42,20 @@ Development or rollback files may exist in the repo, but they are not authoritat
 ### Shipped Runtime
 - `index.html`
 
-### Development Sandbox
-- `phoenix_v9_dev.html`
+### Current Locked Rollback
+- `phoenix_v9_5_beta_locked.html`
 
-### Locked Rollback Baseline
+### Historical Baseline
 - `phoenix_v8_baseline_locked.html`
+
+### Active Development Sandbox
+- `phoenix_v10_dev.html`
 
 Working rule:
 - `index.html` is the only shipped runtime authority
-- `phoenix_v9_dev.html` is the active development sandbox
+- `phoenix_v9_5_beta_locked.html` is the current rollback target for the promoted beta
+- `phoenix_v8_baseline_locked.html` remains the historical baseline
+- `phoenix_v10_dev.html` is the active development sandbox
 - nothing is considered released until it is validated and promoted into `index.html`
 
 ## Current Live Runtime Scope
@@ -133,15 +138,17 @@ Designed to simulate field conditions in a clean, interactive environment while 
 Active development and public beta testing.
 
 Current shipped runtime authority: `index.html`  
-Current active development sandbox: `phoenix_v9_dev.html`
+Current locked rollback target: `phoenix_v9_5_beta_locked.html`  
+Current active development sandbox: `phoenix_v10_dev.html`
 
 ## Promotion Discipline
 
 Promotion flow:
-1. develop and test in `phoenix_v9_dev.html`
+1. develop and test in `phoenix_v10_dev.html`
 2. validate behavior manually
 3. update docs and manifest
 4. promote into `index.html`
+5. lock the promoted runtime as the new rollback snapshot
 
 This keeps the public runtime stable enough for meaningful beta feedback instead of turning the repo into a landfill with buttons.
 
@@ -170,8 +177,9 @@ If usage analytics or session monitoring are later added, they should be explici
 
 Key files:
 - `index.html` → shipped public runtime
-- `phoenix_v9_dev.html` → development sandbox
-- `phoenix_v8_baseline_locked.html` → locked rollback baseline
+- `phoenix_v10_dev.html` → active development sandbox
+- `phoenix_v9_5_beta_locked.html` → current locked rollback snapshot
+- `phoenix_v8_baseline_locked.html` → historical baseline
 - `docs/PROJECT_STATUS.md` → current project state
 - `docs/CHANGELOG.md` → release and sprint history
 - `docs/RUN_MANIFEST.json` → runtime / promotion manifest
