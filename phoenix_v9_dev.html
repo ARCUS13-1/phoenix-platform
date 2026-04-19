@@ -498,7 +498,7 @@
       armCondition: () => false,
       injectCondition: (s) => s.gridHealthy && !s.genStarted,
       faultIds: ['V-SAG','PHASE-ERR'],
-      maxDurationSec: 180
+      maxDurationSec: 240
     ,
       // Scenario philosophy: operate through simultaneous faults
       type: 'OPERATE_THROUGH'
@@ -802,10 +802,12 @@
       this.els.scArmed.textContent = sc.armTriggered ? 'YES' : 'NO';
       // Injection flag
       this.els.scInjected.textContent = sc.injectionPerformed ? 'YES' : 'NO';
-      // Result: pending if still active; else success/failed based on trips
+      // Result: pending if still active; else success/failed based on the recorded end reason
       let res = 'PENDING';
       if(!sc.active){
-        res = sc.trips > 0 ? 'FAILED' : 'SUCCESS';
+        // Use the endReason flag for accuracy; timeout and trip both count as failed
+        const r = sc.endReason;
+        if (r === 'success') res = 'SUCCESS'; else res = 'FAILED';
       }
       this.els.scResult.textContent = res;
       // Elapsed time since scenario start
@@ -1085,6 +1087,8 @@
       const elapsed = (now - sc.startTime) / 1000;
       // Check timeout if defined
       if(def.maxDurationSec && elapsed > def.maxDurationSec){
+        // Mark scenario end reason before ending
+        sc.endReason = 'timeout';
         this.log('Scenario timed out.', 'warn');
         this.endScenario(false);
         return;
@@ -1092,6 +1096,8 @@
       // Check failure condition before success to avoid awarding success incorrectly
       try{
         if(typeof def.failureCondition === 'function' && def.failureCondition(s)){
+          // Mark trip failure reason
+          sc.endReason = 'trip';
           this.endScenario(false);
           return;
         }
@@ -1099,6 +1105,8 @@
       // Check success condition
       try{
         if(typeof def.successCondition === 'function' && def.successCondition(s)){
+          // Mark success reason
+          sc.endReason = 'success';
           this.endScenario(true);
           return;
         }
@@ -1185,8 +1193,11 @@
       this.log(reason, 'trip');
       this.vibrate([100,60,100,60,180]);
       if(this.state.scenario && this.state.scenario.active){
+        // Increment trip and unsafe counters, then record failure reason before ending
         this.state.scenario.trips++;
         this.state.scenario.unsafeAttempts++;
+        // On any protective trip during a scenario, the end reason should be recorded as a trip
+        this.state.scenario.endReason = 'trip';
         this.endScenario(false);
       }
       // Show trip summary panel
@@ -1385,6 +1396,35 @@
       return 'All conditions met — ready to close';
     },
 
+    /**
+     * getScenarioBlocker()
+     *
+     * When a scenario is active, return a human‑readable description of the key constraint
+     * the operator must satisfy before closing the breaker. This guidance is displayed
+     * alongside the standard next‑action hints to help trainees focus on the specific
+     * drill requirements. It does not mutate any state.
+     */
+    getScenarioBlocker() {
+      const sc = this.state.scenario;
+      if (!sc || !sc.active) return '';
+      switch (sc.id) {
+        case 'quickstart':
+          return 'Maintain ΔV < 500 V, Δf < 0.03 Hz and Δφ < 5° to enter sync window';
+        case 'vsag':
+          return 'Raise generator voltage above 13.0 kV before closing';
+        case 'phaseerr':
+          return 'Phase angle must be less than 3° before closing';
+        case 'overcurrent':
+          return 'After injection, keep current below 1400 A for 3.0 s to pass';
+        case 'stuck':
+          return 'Clear BRKR‑STUCK fault before closure';
+        case 'combined':
+          return 'Achieve generator voltage > 13.0 kV and phase < 4° simultaneously';
+        default:
+          return '';
+      }
+    },
+
     getNextAction() {
       const m = this.state.machine.mode;
       if (m === MODE.OFFLINE) return 'Press SIM START to begin training';
@@ -1495,6 +1535,9 @@
       overcurrentStableTime: 0,
       overcurrentInjectedAt: null,
       overcurrentStableLogged: false
+        ,
+        // Reason for scenario termination: success, timeout, or trip. Initially null.
+        endReason: null
     };
       this.log(`SCENARIO STARTED: ${id.toUpperCase()} — ${def.objective}`, 'good');
       // Provide tactile feedback to indicate scenario start
@@ -1508,16 +1551,28 @@
       if (!this.state.scenario || !this.state.scenario.active) return;
       const duration = (Date.now() - this.state.scenario.startTime) / 1000;
       this.state.scenario.syncTime = duration;
-      let score = 100;
-      score -= this.state.scenario.unsafeAttempts * 15;
-      score -= this.state.scenario.trips * 30;
-      if (success) score += 20;
-      this.state.scenario.score = Math.max(0, score);
+      // Determine end reason from scenario state. Use provided flag if available.
+      const reason = this.state.scenario.endReason || (success ? 'success' : 'trip');
+      // Compute a base score: begin from 100 points, subtract unsafe and trip penalties, and add a success bonus
+      let baseScore = 100;
+      baseScore -= this.state.scenario.unsafeAttempts * 15;
+      baseScore -= this.state.scenario.trips * 30;
+      if (success) baseScore += 20;
+      // Clamp base score to non‑negative range and absolute maximum of 120
+      baseScore = Math.min(Math.max(baseScore, 0), 120);
+      // Apply failure caps depending on the termination reason
+      let finalScore = baseScore;
+      if (reason === 'timeout' && !success) {
+        finalScore = Math.min(baseScore, 40);
+      } else if (reason === 'trip' && !success) {
+        finalScore = Math.min(baseScore, 20);
+      }
+      this.state.scenario.score = finalScore;
 
       const def = this.state.scenario.definition;
-      // Build the debrief or failure content based on success
+      // Build the debrief or failure content based on success. Use failure template when not successful
       let scenarioContent;
-      if (success) {
+      if (reason === 'success') {
         scenarioContent = def.debriefTemplate(Math.round(this.state.scenario.score), this.state.scenario);
       } else {
         if (typeof def.failTemplate === 'function') {
@@ -1526,8 +1581,16 @@
           scenarioContent = 'Scenario failed. Review the trip summary and log before retrying.';
         }
       }
+      // Create a result tag reflecting the termination reason
+      let resultStr;
+      if (reason === 'success') resultStr = 'SUCCESS';
+      else if (reason === 'timeout') resultStr = 'FAILED — TIMEOUT';
+      else if (reason === 'trip') resultStr = 'FAILED — TRIP';
+      else resultStr = 'FAILED';
+      // Assemble debrief HTML with explicit result line
       const debriefHTML = `
         <strong>Scenario: ${this.state.scenario.id.toUpperCase()}</strong><br>
+        <strong>RESULT: ${resultStr}</strong><br>
         Objective: ${this.state.scenario.objective}<br>
         Time to sync: ${this.state.scenario.syncTime.toFixed(1)} s<br>
         Unsafe attempts: ${this.state.scenario.unsafeAttempts}<br>
@@ -1539,11 +1602,14 @@
       document.getElementById('debriefPanel').style.display = 'block';
       // record marker for scenario completion
       this.recordMarker('scenario');
-      // log scenario completion event with distinct level
-      this.log(`SCENARIO COMPLETE — Score ${Math.round(this.state.scenario.score)}`, success ? 'good' : 'scenario');
+      // Log scenario completion event with clear result and score. Use a success level when successful.
+      this.log(`SCENARIO COMPLETE — ${resultStr} — Score ${Math.round(this.state.scenario.score)}`, reason === 'success' ? 'good' : 'scenario');
       this.state.lastScore = this.state.scenario.score;
-      if (!this.state.bestScore[this.state.scenario.id] || this.state.scenario.score > this.state.bestScore[this.state.scenario.id]) {
-        this.state.bestScore[this.state.scenario.id] = this.state.scenario.score;
+      // Update best score tracking only on success
+      if (reason === 'success') {
+        if (!this.state.bestScore[this.state.scenario.id] || this.state.scenario.score > this.state.bestScore[this.state.scenario.id]) {
+          this.state.bestScore[this.state.scenario.id] = this.state.scenario.score;
+        }
       }
       this.state.scenario.active = false;
       this.updateTrainingModeBadge();
@@ -1677,6 +1743,8 @@
           // log with closed level
           this.log('Breaker is CLOSED.', 'closed');
           if (this.state.scenario && this.state.scenario.active && this.state.scenario.definition.successCondition(this.state)) {
+            // When the breaker closes into a successful scenario, record the success reason before ending
+            this.state.scenario.endReason = 'success';
             this.endScenario(true);
           }
         }
@@ -1838,10 +1906,19 @@
 
       this.els.clockText.textContent = new Date().toLocaleTimeString('en-US',{hour12:false}) + '.' + String(new Date().getMilliseconds()).padStart(3,'0');
 
-      // 2-layer guidance
+      // Compose guidance panel. Include a scenario‑specific blocker line when a drill is active.
+      const nextAction = this.getNextAction();
+      const why = this.getGuidanceWhy();
+      const blocker = this.getScenarioBlocker();
+      let blockerHTML = '';
+      if (blocker) {
+        // Use a slightly smaller font for the blocker and align with existing spacing
+        blockerHTML = `<div style="font-size:11px;color:var(--muted);margin-top:4px">${blocker}</div>`;
+      }
       this.els.guidancePanel.innerHTML = `
-        <div><span style="color:var(--gold)">NEXT ACTION → </span>${this.getNextAction()}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px">${this.getGuidanceWhy()}</div>
+        <div><span style="color:var(--gold)">NEXT ACTION → </span>${nextAction}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">${why}</div>
+        ${blockerHTML}
       `;
       this.updateBreakerButton();
 
