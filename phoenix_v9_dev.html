@@ -252,6 +252,8 @@
             <div class="tiny"><div class="k">Δφ</div><div id="kvDpAbs" class="v">0.0°</div></div>
             <div class="tiny"><div class="k">Temp</div><div id="kvTemp" class="v">25.0 °C</div></div>
           </div>
+          <!-- Scope status indicator: reflects the high-level machine mode without altering behavior -->
+          <div id="scopeStatus" style="font-size:12px;color:var(--muted);margin-top:6px;text-align:center;">OFFLINE</div>
           <div class="hint">
             Clockwise needle means the generator is fast. Close just before 12 o’clock.<br>
             <span id="syncHintLive" style="color:var(--gold);font-weight:700"></span>
@@ -639,7 +641,7 @@
       requestAnimationFrame(this.tick.bind(this));
     },
     cache(){
-      const ids = ['systemBadge','gridBrief','gridSub','genBrief','genSub','breakerBrief','syncSub','powerBrief','currentSub','govSlider','avrSlider','govRead','avrRead','scope','trend','gridStateText','genStateText','breakerInline','leftFlow','rightFlow','kvSlip','kvPhase','kvQ','kvS','kvDV','kvDfAbs','kvDpAbs','kvTemp','syncBandMarker','syncLamp','syncReadyPill','syncReason','log','clockText','timingInput','timingView','timingPreset','teleMode','teleSource','teleFreq','teleLoad','teleUpdated','guidancePanel','scenarioSelect','btnLoadScenario','debriefPanel','debriefContent','trainingModeBadge','scStatus','scArmed','scInjected','scResult','scElapsed','scType','scStable'];
+      const ids = ['systemBadge','gridBrief','gridSub','genBrief','genSub','breakerBrief','syncSub','powerBrief','currentSub','govSlider','avrSlider','govRead','avrRead','scope','trend','gridStateText','genStateText','breakerInline','leftFlow','rightFlow','kvSlip','kvPhase','kvQ','kvS','kvDV','kvDfAbs','kvDpAbs','kvTemp','syncBandMarker','syncLamp','syncReadyPill','syncReason','log','clockText','timingInput','timingView','timingPreset','teleMode','teleSource','teleFreq','teleLoad','teleUpdated','guidancePanel','scenarioSelect','btnLoadScenario','debriefPanel','debriefContent','trainingModeBadge','scStatus','scArmed','scInjected','scResult','scElapsed','scType','scStable','scopeStatus'];
       ids.forEach(id=>this.els[id]=document.getElementById(id));
       this.scopeCtx = this.els.scope.getContext('2d');
       this.trendCtx = this.els.trend.getContext('2d');
@@ -813,14 +815,24 @@
       const type = sc.definition && sc.definition.type ? sc.definition.type : '—';
       const labelMap = { 'CLEAN_SYNC':'CLEAN SYNC', 'OPERATE_THROUGH':'OPERATE-THROUGH', 'CLEAR_RECOVER':'CLEAR-RECOVER' };
       this.els.scType.textContent = labelMap[type] || type;
+      // Display stable timer progress for overcurrent scenarios.  Show injection and counting state.
       if (this.els.scStable) {
-      if (sc.id === 'overcurrent') {
-      const stable = typeof sc.overcurrentStableTime === 'number' ? sc.overcurrentStableTime : 0;
-      this.els.scStable.textContent = `${stable.toFixed(1)} / 3.0 s`;
-     } else {
-      this.els.scStable.textContent = '—';
-     }
-   }
+        if (sc.id === 'overcurrent') {
+          const stableTime = typeof sc.overcurrentStableTime === 'number' ? sc.overcurrentStableTime : 0;
+          const progress = `${stableTime.toFixed(1)} / 3.0 s`;
+          // If injection has not yet been performed, indicate waiting state.
+          if (!sc.injectionPerformed) {
+            this.els.scStable.textContent = progress + ' (await inj)';
+          } else if (stableTime > 0) {
+            this.els.scStable.textContent = progress + ' (counting)';
+          } else {
+            // Injection occurred but timer not started: timer reset
+            this.els.scStable.textContent = progress + ' (reset)';
+          }
+        } else {
+          this.els.scStable.textContent = '—';
+        }
+      }
     },
 
     /**
@@ -923,6 +935,67 @@
       const summary = lines.join('\n');
       console.log(summary);
       return summary;
+    },
+
+    /**
+     * runFunctionChecks()
+     *
+     * Perform lightweight structural checks of the simulator without mutating runtime state. This
+     * helper inspects the existence of critical functions, state fields, scenario definitions and
+     * trip snapshot composition. It returns a multi‑line string summarising the outcome. Use this
+     * during development for quick verification; it has no side effects.
+     */
+    runFunctionChecks(){
+      const lines = [];
+      // Initial machine state
+      lines.push('Machine initial mode: ' + (this.state.machine && this.state.machine.mode));
+      // Existence of core start functions
+      lines.push('startSim exists: ' + (typeof this.startSim === 'function'));
+      lines.push('startGrid exists: ' + (typeof this.startGrid === 'function'));
+      lines.push('startGen exists: ' + (typeof this.startGen === 'function'));
+      // Presence of sync gating timers in state
+      ['syncReadyTimer','syncLostTimer'].forEach(f => {
+        lines.push('State has ' + f + ': ' + (this.state.hasOwnProperty(f)));
+      });
+      // Validate trip snapshot keys via static inspection of tripBreaker function
+      const tripKeys = ['dv','df','dphi','current','faults','scenarioId'];
+      if(typeof this.tripBreaker === 'function'){
+        const code = this.tripBreaker.toString();
+        const missing = tripKeys.filter(k => !code.includes(k + ':'));
+        if(missing.length > 0) lines.push('Trip snapshot keys missing in tripBreaker: ' + missing.join(', '));
+        else lines.push('Trip snapshot keys present in tripBreaker: OK');
+      } else {
+        lines.push('tripBreaker function not found');
+      }
+      // Verify each scenario has required callbacks
+      let scenarioOk = true;
+      for(const id of Object.keys(SCENARIOS)){
+        const def = SCENARIOS[id];
+        const hasArm = typeof def.armCondition === 'function';
+        const hasInject = typeof def.injectCondition === 'function';
+        const hasSuccess = typeof def.successCondition === 'function';
+        const hasFail = typeof def.failureCondition === 'function';
+        if(!(hasArm && hasInject && hasSuccess && hasFail)) scenarioOk = false;
+      }
+      lines.push('Scenario definitions have required callbacks: ' + scenarioOk);
+      // Check overcurrent scenario success condition references dwell fields
+      const ocDef = SCENARIOS.overcurrent;
+      let ocFieldsOk = false;
+      if(ocDef && typeof ocDef.successCondition === 'function'){
+        const defStr = ocDef.successCondition.toString();
+        ocFieldsOk = defStr.includes('overcurrentStableTime') && defStr.includes('injectionPerformed');
+      }
+      lines.push('Overcurrent success condition checks dwell fields: ' + ocFieldsOk);
+      // Lower‑load button presence
+      const llBtn = document.getElementById('btnLowerLoad');
+      lines.push('Lower‑load control present: ' + !!llBtn);
+      // Scenario state panel elements presence
+      ['scStatus','scArmed','scInjected','scResult','scElapsed','scType','scStable'].forEach(id => {
+        lines.push(id + ' element present: ' + !!this.els[id]);
+      });
+      // Scope status element presence
+      lines.push('scopeStatus element present: ' + !!this.els.scopeStatus);
+      return lines.join('\n');
     },
 
     dispatch(event){
@@ -1752,6 +1825,16 @@
       else if (mode === MODE.TRIPPED) badgeClass = 'status-trip';
       this.els.systemBadge.textContent = mode.replace(/_/g, ' ');
       this.els.systemBadge.className = 'badge ' + badgeClass;
+
+      // Derive a concise scope status for the synchroscope.  This does not alter simulator
+      // behavior but gives operators a quick cue about the current high‑level state.
+      let scopeState = 'TRACKING';
+      if (mode === MODE.OFFLINE) scopeState = 'OFFLINE';
+      else if (mode === MODE.TRIPPED) scopeState = 'TRIPPED';
+      else if (mode === MODE.SYNC_WINDOW) scopeState = 'SYNC WINDOW';
+      else if (mode === MODE.PARALLEL) scopeState = 'PARALLEL';
+      // Default to tracking for all other non‑fault, non‑parallel modes (IDLE, GRID_WARMUP, GEN_READY, etc.)
+      this.els.scopeStatus.textContent = scopeState;
 
       this.els.clockText.textContent = new Date().toLocaleTimeString('en-US',{hour12:false}) + '.' + String(new Date().getMilliseconds()).padStart(3,'0');
 
