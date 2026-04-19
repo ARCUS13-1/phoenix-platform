@@ -1,12 +1,14 @@
 {
-  "task": "phoenix_v9_dev hardening and validation-prep pass",
-  "date": "2026-04-18",
+  "task": "v9.5 public beta promotion",
+  "date": "2026-04-19",
   "version": "v9.5",
   "files": {
-    "dev": "phoenix_v9_dev.html",
-    "runtime": "index.html"
+    "runtime": "index.html",
+    "rollback": "phoenix_v9_5_beta_locked.html",
+    "historical_baseline": "phoenix_v8_baseline_locked.html",
+    "dev": "phoenix_v10_dev.html"
   },
-  "status": "pending_manual_validation",
+  "status": "promoted_public_beta",
   "gates": {
     "GateA": true,
     "GateB": true,
@@ -14,12 +16,19 @@
   },
   "schema_valid": true,
   "changes": [
-    "Added runFunctionChecks helper",
-    "Added scope-status UI indicator",
-    "Improved overcurrent stable-window visibility",
-    "Added lower-load control for operator recovery",
-    "Hardened overcurrent success logic with 3.0 s stable dwell requirement",
-    "Performed minor code hygiene"
+    "Promoted tested v9.5 beta build into index.html",
+    "Locked promoted runtime as phoenix_v9_5_beta_locked.html",
+    "Advanced active development sandbox to phoenix_v10_dev.html",
+    "Added state-aware scenario engine",
+    "Added dwell-time sync gating",
+    "Added trip summary panel and trip snapshot capture",
+    "Added trend event markers",
+    "Added fine-trim governor and AVR nudge controls",
+    "Added lower-load control for overcurrent recovery",
+    "Added scope-status indicator",
+    "Hardened overcurrent drill with 3.0 s stable dwell requirement",
+    "Hardened failure semantics for timeout and trip outcomes",
+    "Added drill-specific blocker guidance during active scenarios"
   ],
   "validated_behaviors": [
     "State machine and start functions present",
@@ -28,13 +37,15 @@
     "All scenarios define armCondition, injectCondition, successCondition, and failureCondition",
     "Overcurrent injects only after breaker closure",
     "Overcurrent success requires injection plus stable current below 1400 A for 3.0 s",
-    "Scope-status element and scenario-state panel elements are present"
+    "Scope-status element and scenario-state panel elements are present",
+    "Failure semantics distinguish SUCCESS, FAILED — TIMEOUT, and FAILED — TRIP",
+    "Live public beta runtime promoted into index.html"
   ],
   "remaining_risks": [
-    "Manual scenario validation still required across all drills",
-    "Mobile layout and readability need live verification",
-    "Final Step 7 UI polish not complete",
-    "No promotion to index.html yet"
+    "Public beta may expose scenario edge cases not found in manual validation",
+    "Mobile readability should continue to be verified across devices",
+    "Guidance wording may still need refinement from real tester feedback",
+    "Post-beta hardening may still be required before stable release candidate"
   ],
-  "notes": "Dev-only pass awaiting final manual scenario validation before promotion."
+  "notes": "v9.5 promoted into index.html as the public beta runtime. Future non-shipped work continues in phoenix_v10_dev.html."
 }
