@@ -6,6 +6,7 @@
 - Promoted the tested v9.5 beta build into `index.html`
 - Updated the public GitHub Pages runtime to the current tested beta build
 - Locked the promoted runtime as `phoenix_v9_5_beta_locked.html`
+- Advanced the active development sandbox to `phoenix_v10_dev.html`
 
 ### Added
 - State-aware scenario engine using `armCondition`, `injectCondition`, `faultIds`, and `maxDurationSec`
@@ -19,6 +20,7 @@
 - `runFunctionChecks()` dev helper to perform internal structural checks without mutating runtime state
 - Scope-status indicator near the synchroscope to show OFFLINE / TRACKING / SYNC WINDOW / PARALLEL / TRIPPED
 - Enhanced overcurrent stable-window visibility in the scenario state panel
+- Drill-specific blocker guidance during active scenarios
 
 ### Changed
 - `loadScenario()` now uses state-aware sequencing instead of timer-driven drill flow
