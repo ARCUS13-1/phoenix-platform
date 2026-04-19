@@ -1,4 +1,10 @@
-## [Unreleased] - 2026-04-18
+# CHANGELOG
+
+## [2026-04-19] - Public Beta Promotion
+
+### Promoted
+- Promoted the tested v9.5 beta build from `phoenix_v9_dev.html` into `index.html`
+- Updated the public GitHub Pages runtime to the current tested beta build
 
 ### Added
 - State-aware scenario engine using `armCondition`, `injectCondition`, `faultIds`, and `maxDurationSec`
@@ -9,29 +15,36 @@
 - State-aware breaker labels including closing-state feedback
 - Scenario-specific failure messaging
 - Lower-load control for overcurrent recovery
-- `runFunctionChecks()` dev helper to perform internal structural checks and report results without mutating state
-- Scope-status indicator near the synchroscope to show OFFLINE / TRACKING / SYNC WINDOW / PARALLEL / TRIPPED derived from the state machine
-- Enhanced overcurrent scenario stable-window visibility with progress and injection status in the scenario state panel
+- `runFunctionChecks()` dev helper to perform internal structural checks without mutating runtime state
+- Scope-status indicator near the synchroscope to show OFFLINE / TRACKING / SYNC WINDOW / PARALLEL / TRIPPED
+- Enhanced overcurrent stable-window visibility in the scenario state panel
 
 ### Changed
 - `loadScenario()` now uses state-aware sequencing instead of timer-driven drill flow
 - `tick()` now evaluates scenario state every frame after physics updates
-- `updatePhysics()` now gates sync readiness/loss with dwell timing
-- `updateUI()` normalizes generator display values to grid values while closed
+- `updatePhysics()` now gates sync readiness / loss with dwell timing
 - Guidance panel now better reflects machine and drill context
-- Updated scenario state panel to display the overcurrent dwell timer with status suffixes: `(await inj)`, `(counting)`, or `(reset)`
-- Extended the element cache to include `scopeStatus`
-- Overcurrent drill success now requires post-injection stability under 1400 A for a 3.0 s dwell window
-- Minor indentation and comment alignment for readability
+- Scenario state panel now shows overcurrent dwell timer status
+- Overcurrent drill success now requires post-injection stability under 1400 A for a continuous 3.0 s dwell window
+- Failure semantics were hardened so failed drills do not present misleading successful outcomes
+- Result wording now distinguishes SUCCESS, FAILED — TIMEOUT, and FAILED — TRIP
+- Combined fault drill timeout was extended for clearer recovery testing
 
 ### Fixed
 - Overcurrent drill no longer injects before synchronization
 - Overcurrent drill no longer completes immediately on injection
 - Sync-window flicker reduced by dwell gating
-- Breaker close command feedback improved with `CLOSING…` state
+- Breaker close command feedback improved with closing-state clarity
 - Marker indices persist correctly through history trimming
+- Failure scoring no longer leaves timeout or trip failures with misleading high scores
+- Guidance now includes drill-specific blocker feedback during active scenarios
+
+### Documentation
+- Updated README to reflect public beta state
+- Updated `docs/PROJECT_STATUS.md` to reflect promotion into `index.html`
+- Updated `docs/RUN_MANIFEST.json` to reflect current beta runtime status
 
 ### Notes
-- Changes apply only to `phoenix_v9_dev.html`
-- Runtime authority remains `index.html`
-- This pass is validation-prep only and has not yet been promoted
+- `index.html` is now the live public beta runtime authority
+- `phoenix_v9_dev.html` remains the active development sandbox
+- Future changes should continue in `phoenix_v9_dev.html` and only move into `index.html` after validation
