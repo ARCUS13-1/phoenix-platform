@@ -1,56 +1,104 @@
 # Phoenix Source of Truth
 
-## Current Runtime Authority
-The single canonical shipped runtime file is:
+## 🧭 Runtime Authority
+
+The single canonical runtime is:
 
 - `index.html`
 
-## Repository Runtime Roles
+This file is the **only authoritative representation of the live simulator**.
 
-### Shipped Runtime
-- `index.html`
+---
 
-### Current Locked Rollback
-- `phoenix_v9_5_beta_locked.html`
+## 📁 Runtime Roles
 
-### Historical Baseline
-- `phoenix_v8_baseline_locked.html`
+| File | Role |
+|-----|------|
+| `index.html` | Live runtime authority |
+| `phoenix_v9_5_beta_locked.html` | Locked rollback snapshot |
+| `phoenix_v8_baseline_locked.html` | Historical baseline |
+| `phoenix_v10_dev.html` | Active development sandbox |
 
-### Active Development Sandbox
-- `phoenix_v10_dev.html`
+---
 
-## Authority Rules
-- `index.html` is the only runtime-authoritative application file.
-- All regression checks, behavior reviews, bug verification, and release validation must be performed against `index.html`.
-- Development, rollback, and historical files may exist in the repo, but they are not shipped authority unless explicitly promoted.
-- If any non-runtime file conflicts with `index.html`, `index.html` wins.
+## ⚖️ Authority Rules
 
-## Development Workflow
-- New features must be explored and validated in `phoenix_v10_dev.html`.
-- Validated behavior is promoted into `index.html` only after function checks and manual validation pass.
-- Once promoted, the shipped runtime should be locked as a rollback snapshot.
-- Any promotion into `index.html` must update:
-  - `docs/PROJECT_STATUS.md`
-  - `docs/CHANGELOG.md`
-  - `docs/RUN_MANIFEST.json`
+- `index.html` is the only runtime-authoritative file.
+- All validation, regression checks, and behavior verification must be performed against `index.html`.
+- Development, rollback, and historical files are **non-authoritative** unless explicitly promoted.
+- If any file conflicts with `index.html`, **`index.html` is correct by definition**.
 
-## Regression Checks
-Regression checks against `index.html` must verify:
+---
+
+## 🔁 Development Workflow
+
+All changes must follow this flow:
+
+1. Develop and test in `phoenix_v10_dev.html`
+2. Validate behavior manually (no assumptions)
+3. Confirm no regression against runtime expectations
+4. Promote into `index.html`
+5. Lock promoted version as a rollback snapshot
+6. Update documentation:
+   - `docs/PROJECT_STATUS.md`
+   - `docs/CHANGELOG.md`
+   - `docs/RUN_MANIFEST.json`
+
+---
+
+## 🧪 Regression Requirements
+
+Every promotion must pass the following checks against `index.html`:
+
+### Core Controls
 - SIM START / PAUSE / RESET
 - GRID START warmup
 - GEN START / GEN STOP
-- sync safety gating
-- breaker OPEN / CLOSED / TRIPPED
-- fault inject / clear
-- live charts
-- timing / waveform view
-- analysis / logging
-- export / replay behavior
-- telemetry overlay fallback behavior
 
-## Working Rule
-- `index.html` remains the only shipped runtime authority
-- `phoenix_v9_5_beta_locked.html` is the current rollback target
-- `phoenix_v8_baseline_locked.html` remains the historical baseline
-- `phoenix_v10_dev.html` is the active development sandbox
-- Nothing is considered released until validated and promoted into `index.html`
+### Sync + Breaker Logic
+- sync safety gating
+- breaker OPEN / CLOSED / TRIPPED behavior
+- close eligibility correctness
+
+### Fault Handling
+- fault inject
+- fault clear
+- correct trip behavior
+
+### Analysis & Review
+- live charts update correctly
+- timing / waveform view renders
+- analysis / logging (SOE) functions
+- export / replay behaves correctly
+
+### Telemetry
+- telemetry overlay functions
+- fallback behavior is stable when offline
+
+---
+
+## 🔒 Invariants
+
+The following must never regress without explicit, documented intent:
+
+- single-file runtime architecture
+- no external dependencies
+- conservative sync safety thresholds
+- deterministic state-machine behavior
+- scenarios remain startable, winnable, and single-ending
+- guidance reflects actual simulator behavior
+
+---
+
+## 🧠 Working Rule
+
+- `index.html` is the live system
+- `phoenix_v10_dev.html` is the experiment
+- nothing is real until it is promoted
+
+If there is any uncertainty:
+
+👉 trust the runtime  
+👉 not the idea  
+👉 not the dev file  
+👉 not the intention
