@@ -1,59 +1,128 @@
 # CHANGELOG
 
-## [2026-04-19] - Public Beta Promotion
+## [2026-04-19] — Public Beta Promotion (v9.5)
 
-### Promoted
-- Promoted the tested v9.5 beta build into `index.html`
-- Updated the public GitHub Pages runtime to the current tested beta build
-- Locked the promoted runtime as `phoenix_v9_5_beta_locked.html`
-- Advanced the active development sandbox to `phoenix_v10_dev.html`
+### 🚀 Release Summary
+Promoted the **v9.5 beta build** to the live runtime and advanced development into the v10 sandbox.
 
-### Added
-- State-aware scenario engine using `armCondition`, `injectCondition`, `faultIds`, and `maxDurationSec`
-- Dwell-time sync gating using `syncReadyTimer` and `syncLostTimer`
-- Trip summary panel with captured trip snapshot
-- Event markers on the analysis trend
-- Fine-trim governor and AVR nudge controls
-- State-aware breaker labels including closing-state feedback
+---
+
+## 📦 Runtime Promotion
+
+- `index.html` → now the live public beta runtime
+- `phoenix_v9_5_beta_locked.html` → locked rollback snapshot
+- `phoenix_v10_dev.html` → active development sandbox
+- GitHub Pages updated to the promoted v9.5 build
+
+---
+
+## 🧠 Core Systems Added
+
+### Scenario Engine
+- State-aware drill system using:
+  - `armCondition`
+  - `injectCondition`
+  - `faultIds`
+  - `maxDurationSec`
+
+### Sync Gating
+- Dwell-based sync validation using:
+  - `syncReadyTimer`
+  - `syncLostTimer`
+
+### Operator Feedback
+- Trip summary panel with captured snapshot
 - Scenario-specific failure messaging
+- Drill-aware blocker guidance
+- Scope-status indicator:
+  - OFFLINE / TRACKING / SYNC WINDOW / PARALLEL / TRIPPED
+
+---
+
+## 🎛️ Controls & Interaction
+
+- Fine-trim governor and AVR nudge controls
+- State-aware breaker labels with closing feedback
 - Lower-load control for overcurrent recovery
-- `runFunctionChecks()` dev helper to perform internal structural checks without mutating runtime state
-- Scope-status indicator near the synchroscope to show OFFLINE / TRACKING / SYNC WINDOW / PARALLEL / TRIPPED
-- Enhanced overcurrent stable-window visibility in the scenario state panel
-- Drill-specific blocker guidance during active scenarios
 
-### Changed
-- `loadScenario()` now uses state-aware sequencing instead of timer-driven drill flow
-- `tick()` now evaluates scenario state every frame after physics updates
-- `updatePhysics()` now gates sync readiness / loss with dwell timing
-- Guidance panel now better reflects machine and drill context
-- Scenario state panel now shows overcurrent dwell timer status
-- Overcurrent drill success now requires post-injection stability under 1400 A for a continuous 3.0 s dwell window
-- Failure semantics were hardened so failed drills do not present misleading successful outcomes
-- Result wording now distinguishes SUCCESS, FAILED — TIMEOUT, and FAILED — TRIP
-- Combined fault drill timeout was extended for clearer recovery testing
+---
 
-### Fixed
-- Overcurrent drill no longer injects before synchronization
-- Overcurrent drill no longer completes immediately on injection
-- Sync-window flicker reduced by dwell gating
-- Breaker close command feedback improved with closing-state clarity
-- Marker indices persist correctly through history trimming
-- Failure scoring no longer leaves timeout or trip failures with misleading high scores
-- Guidance now includes drill-specific blocker feedback during active scenarios
+## 📊 Analysis & Review
 
-### Documentation
-- Updated README to reflect public beta state
-- Updated `docs/SOURCE_OF_TRUTH.md` to reflect the new runtime-role structure
-- Updated `docs/PROJECT_STATUS.md` to reflect promotion into `index.html`
-- Updated `docs/RUN_MANIFEST.json` to reflect current beta runtime status
+- Event markers on trend chart
+- Marker index persistence through history trimming
+- Scenario state panel enhancements:
+  - overcurrent dwell window visibility
+  - drill-state feedback
 
-### Runtime Roles
-- `index.html` is now the live public beta runtime authority
-- `phoenix_v9_5_beta_locked.html` is the current locked rollback snapshot
-- `phoenix_v8_baseline_locked.html` remains the historical baseline
-- `phoenix_v10_dev.html` is now the active development sandbox
+---
 
+## 🔧 Behavioral Changes
+
+### Scenario Execution
+- `loadScenario()` → moved to state-based sequencing
+- `tick()` → now evaluates scenario state every frame
+- `updatePhysics()` → now enforces dwell-based sync logic
+
+### Drill Logic Improvements
+- Overcurrent drill:
+  - requires < 1400 A stability
+  - requires continuous 3.0 s dwell window after injection
+- Combined fault timeout extended for recovery realism
+
+### Result Accuracy
+- Clear result states:
+  - SUCCESS
+  - FAILED — TIMEOUT
+  - FAILED — TRIP
+- Failure scoring corrected to prevent misleading high scores
+
+---
+
+## 🐞 Fixes
+
+- Overcurrent drill:
+  - no longer injects before sync
+  - no longer completes immediately on injection
+- Sync-window flicker reduced (dwell gating)
+- Breaker close feedback improved (closing state clarity)
+- Marker tracking stable across history trimming
+- Guidance now reflects real drill blockers during execution
+
+---
+
+## 📚 Documentation Updates
+
+- README updated for public beta
+- `docs/SOURCE_OF_TRUTH.md` aligned with runtime structure
+- `docs/PROJECT_STATUS.md` updated for v9.5 promotion
+- `docs/RUN_MANIFEST.json` updated to current runtime state
+
+---
+
+## 🧭 Runtime Roles (Current)
+
+| File | Role |
+|-----|------|
+| `index.html` | Live public beta runtime |
+| `phoenix_v9_5_beta_locked.html` | Locked rollback snapshot |
+| `phoenix_v8_baseline_locked.html` | Historical baseline |
+| `phoenix_v10_dev.html` | Active development sandbox |
+
+---
+
+## 🎯 Notes
+
+This release establishes:
+- stable scenario execution
+- trustworthy sync gating
+- reliable failure semantics
+- structured operator feedback
+
+Foundation is now set for:
+- v10 expansion
+- horizon modules (relay, rotor, telemetry depth)
+- improved replay and analysis tooling
 ### Notes
 - Public beta is now live from `index.html`
 - Future changes should continue in `phoenix_v10_dev.html` and only move into `index.html` after validation
