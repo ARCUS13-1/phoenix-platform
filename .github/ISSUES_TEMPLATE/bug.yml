@@ -1,0 +1,43 @@
+name: Bug Report
+description: Report a reproducible simulator issue
+title: "[BUG] "
+labels: ["bug"]
+
+body:
+  - type: input
+    id: scenario
+    attributes:
+      label: Scenario
+      placeholder: e.g. phaseerr, vsag, combined
+
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      placeholder: iPhone 15, Desktop, etc.
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      placeholder: Safari, Chrome, Edge
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes / Logs
