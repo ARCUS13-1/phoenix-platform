@@ -1,6 +1,6 @@
 # Phoenix Platform Progress
 
-## 🧭 Runtime Authority
+## Runtime Authority
 
 | File | Role |
 |-----|------|
@@ -14,7 +14,7 @@ No feature is considered released until it is validated and promoted into `index
 
 ---
 
-## ⚙️ Current Runtime (v9.5 Public Beta)
+## Current Runtime (v9.5 Public Beta)
 
 The live runtime (`index.html`) currently includes:
 
@@ -49,7 +49,7 @@ The live runtime (`index.html`) currently includes:
 
 ---
 
-## 🧪 Development Status (v10)
+## Development Status (v10)
 
 `phoenix_v10_dev.html` is the active sandbox for:
 
@@ -61,7 +61,7 @@ No changes are considered live until validated and promoted.
 
 ---
 
-## 📍 Current Phase Progress
+## Current Phase Progress
 
 ### Completed
 - [x] State machine scaffold
@@ -89,7 +89,7 @@ No changes are considered live until validated and promoted.
 
 ---
 
-## 📢 Public Beta Notes
+## Public Beta Notes
 
 - Public beta is active
 - Feedback should be submitted via:
@@ -100,7 +100,7 @@ Direct feedback is still useful, but **tracked issues are preferred for reproduc
 
 ---
 
-## ⚠️ Current Risks
+## Current Risks
 
 - Scenario edge cases may surface under broader testing
 - Mobile usability requires real-device validation
@@ -109,7 +109,7 @@ Direct feedback is still useful, but **tracked issues are preferred for reproduc
 
 ---
 
-## 🔁 Development Discipline
+## Development Discipline
 
 All changes must follow:
 
@@ -125,7 +125,7 @@ All changes must follow:
 
 ---
 
-## 🚧 Immediate Next Steps
+## Immediate Next Steps
 
 1. Finalize GitHub issue templates
 2. Enable GitHub Discussions
