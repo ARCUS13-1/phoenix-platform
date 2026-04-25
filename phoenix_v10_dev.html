@@ -1,3 +1,26 @@
+<!--
+ PHOENIX ENGINEERING PLATFORM v10 DEV
+ Single-file development sandbox for grid ↔ generator synchronizing training.
+
+ Current implemented areas:
+ - simulator control and state machine
+ - grid / generator start-stop flow
+ - synchroscope and sync gating
+ - breaker close / open / trip / reset
+ - fault drills and debrief
+ - trend, SOE log, timing studio
+ - telemetry overlay fallback
+ - stress meter and rotor training visual
+ - progression, playbook, instructor shell
+
+ Partial / stubbed areas:
+ - relay lab
+ - SPICE lab
+ - replay scrub does not fully resync trend view during scrubbing
+
+ Runtime authority remains index.html.
+ Development authority for this pass is phoenix_v10_dev.html.
+-->
 <!doctype html>
 <html lang="en">
 <head>
@@ -12,28 +35,64 @@
       --shadow:0 0 0 1px rgba(89,215,255,.12), 0 10px 30px rgba(0,0,0,.35);
       --radius:14px;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+
+      /* Visual convergence design tokens */
+      --bg-0:#060b12;
+      --bg-1:#0b1320;
+      --shell:#101a2a;
+      --shell-2:#152236;
+      --line-soft:rgba(120,180,255,.12);
+      --line-strong:rgba(120,180,255,.28);
+      --glow-cyan:0 0 18px rgba(89,215,255,.18);
+      --glow-gold:0 0 18px rgba(246,196,83,.16);
+      --glow-green:0 0 18px rgba(49,210,138,.18);
+      --glow-red:0 0 18px rgba(255,107,107,.18);
     }
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     html,body{margin:0;height:100%;background:linear-gradient(180deg,#07101a,#0a1523 40%,#08101c);color:var(--text)}
-    body{min-height:100dvh;padding-top:var(--safe-top);padding-bottom:var(--safe-bottom);overflow:hidden}
+    /* Allow body scrolling for overflow; safe area padding preserved */
+    body{min-height:100dvh;padding-top:var(--safe-top);padding-bottom:var(--safe-bottom);overflow:auto}
     button,input,select,textarea{font:inherit}
-    .app{display:grid;grid-template-rows:auto auto auto 1fr auto;height:100dvh}
+    /* Base .app grid definition stripped of row/height specifics; final rows defined later */
+    .app{display:grid;}
     .top{padding:12px 14px 10px;border-bottom:1px solid var(--line);background:rgba(8,16,28,.92);backdrop-filter:blur(10px)}
     .title{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
     .title h1{margin:0;font-size:18px;letter-spacing:.02em}
     .subtitle{font-size:11px;color:var(--muted);margin-top:4px}
     .badge{padding:7px 10px;border-radius:999px;border:1px solid var(--line);font-size:11px;font-weight:700;white-space:nowrap}
     .status-offline{color:var(--red)} .status-online{color:var(--green)} .status-closed{color:var(--green)} .status-open{color:var(--gold)} .status-trip{color:var(--red)}
-    .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+    /* Base .metrics grid stripped of column count; responsive columns defined later */
+    .metrics{display:grid;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
     .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
     .metric{padding:10px;min-height:72px}
     .metric .label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
     .metric .value{font-size:18px;font-weight:800;margin-top:6px}
     .metric .sub{font-size:11px;color:var(--muted);margin-top:2px}
-    .tabs{display:flex;gap:8px;overflow:auto;padding:10px 12px;border-bottom:1px solid var(--line)}
-    .tab{background:var(--panel);border:1px solid var(--line);color:var(--muted);padding:10px 12px;border-radius:12px;font-weight:700;white-space:nowrap}
-    .tab.active{color:var(--cyan);border-color:rgba(89,215,255,.45);box-shadow:inset 0 0 0 1px rgba(89,215,255,.12)}
-    .view{display:none;overflow:auto;padding:12px}
+    /* Stress bar visualisation within the stress metric card */
+    .stress-bar{width:100%;height:4px;background:var(--line);border-radius:2px;margin-top:4px;overflow:hidden}
+    .stress-bar .fill{height:100%;width:0%;background:var(--green);transition:width 0.3s ease, background-color 0.3s ease}
+
+    /* Mission briefing strip below the header */
+    .mission-strip{display:flex;flex-wrap:wrap;gap:10px;padding:6px 12px;border-bottom:1px solid var(--line);background:rgba(8,16,28,.9);backdrop-filter:blur(6px);font-size:11px;line-height:1.2em}
+    .mission-strip .item{display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:12px;background:var(--panel);border:1px solid var(--line);color:var(--muted)}
+    .mission-strip .item strong{color:var(--cyan)}
+    .mission-strip .item .value{font-weight:700;color:var(--text)}
+
+    /* Log filter chips */
+    .log-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+    .log-filters .chip{padding:6px 10px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-size:10px;cursor:pointer;user-select:none}
+    .log-filters .chip.active{color:var(--cyan);border-color:rgba(89,215,255,.45);box-shadow:inset 0 0 0 1px rgba(89,215,255,.15)}
+
+    /* Replay scrub bar */
+    .replay-bar{display:flex;align-items:center;gap:8px;margin-top:8px}
+    .replay-bar button{padding:6px 10px;font-size:12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);cursor:pointer}
+    .replay-bar button:hover{background:var(--panel2)}
+    .replay-bar input[type=range]{flex:1;appearance:none;height:4px;background:var(--line);border-radius:2px;outline:none}
+    .replay-bar input[type=range]::-webkit-slider-thumb{appearance:none;width:12px;height:12px;border-radius:50%;background:var(--cyan);cursor:pointer;margin-top:-4px}
+    .replay-bar input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--cyan);cursor:pointer}
+    /* Base .tabs and .tab definitions stripped down to avoid conflicting with consolidated definitions */
+    /* Base .view stripped of overflow; final scroll behaviour defined later */
+    .view{display:none;padding:12px}
     .view.active{display:block}
     .stack{display:grid;gap:12px}
     .panel{padding:12px}
@@ -56,6 +115,79 @@
     #trend{width:100%;height:200px;display:block}
     .kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
     .kv .tiny{padding:9px 10px;border:1px solid rgba(255,255,255,.05);border-radius:12px;background:rgba(255,255,255,.02)}
+
+    /*
+     * === UI corrections for mobile trust and navigation ===
+     * These overrides adjust the mission strip, tab bar, chips, replay controls
+     * and container heights to improve usability on phones. By adding them
+     * toward the end of the stylesheet, they override earlier definitions
+     * without rewriting the original code.
+     */
+    /* Mission strip should not wrap lines; enable horizontal scrolling */
+    .mission-strip{
+      flex-wrap:nowrap;
+      overflow-x:auto;
+      overflow-y:hidden;
+      white-space:nowrap;
+      -webkit-overflow-scrolling:touch;
+    }
+    .mission-strip::-webkit-scrollbar{display:none}
+
+    /* Removed specific horizontal scrolling behaviour for .tabs and flex-basis prevention. Consolidated definitions will handle wrapping and scroll behaviour. */
+
+    /* Bigger filter chips for better tap targets */
+    .log-filters .chip{
+      padding:8px 14px;
+      border-radius:14px;
+      font-size:12px;
+    }
+
+    /* Enlarge replay controls for mobile accuracy */
+    .replay-bar button{
+      padding:8px 12px;
+      font-size:14px;
+    }
+    /* Thicker slider thumb and track */
+    .replay-bar input[type=range]{
+      height:6px;
+      border-radius:3px;
+    }
+
+    /* Duplicate .app height definition removed; consolidated layout defined later */
+    /* .app height handled in consolidated definitions */
+
+    /* Duplicate body overflow rule removed; handled by consolidated definition */
+
+    /* Duplicate .view scroll behaviour removed; handled by consolidated definition */
+
+    /* Removed earlier responsive metrics rules; unified in consolidated definitions */
+
+    /* Duplicate tab bar and tab sizing rules removed; handled by consolidated definition */
+
+    /* Hide short or full labels depending on viewport width */
+    .tab .short-label{display:none;}
+    .tab .full-label{display:inline;}
+    @media (max-width:600px){
+      .tab .full-label{display:none;}
+      .tab .short-label{display:inline;}
+    }
+
+    /* Hide low-priority mission-strip items on narrow screens */
+    @media (max-width:600px){
+      .mission-strip .low-priority{display:none;}
+      /* Slightly reduce padding and font for mission items on phone */
+      .mission-strip .item{padding:4px 6px;font-size:10px;}
+    }
+
+    /* Sync-dock scope-meta controls: 2 columns on small screens to prevent crowding */
+    /* Removed earlier scope-meta responsive rule; unified in consolidated definitions */
+
+    /* Increase nudge button size for mobile */
+    @media (max-width:600px){
+      .btn-nudge{padding:8px 6px;font-size:12px;}
+    }
+
+    /* Duplicate .app row structure removed; consolidated layout defined later */
     .tiny .k{font-size:10px;color:var(--muted);text-transform:uppercase}.tiny .v{margin-top:4px;font-weight:800}
     /* Fine trim controls */
     .nudge-row{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px}
@@ -92,7 +224,6 @@
     .sync-pill.ready{color:var(--green);border-color:rgba(49,210,138,.4)}
     .sync-pill.wait{color:var(--gold);border-color:rgba(246,196,83,.4)}
     .sync-pill.trip{color:var(--red);border-color:rgba(255,107,107,.45)}
-.scope-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
     .guidance{font-size:13px;font-weight:700;color:var(--cyan);padding:12px;border:1px solid rgba(89,215,255,.3);border-radius:12px;background:rgba(89,215,255,.08);box-shadow:0 0 12px rgba(89,215,255,.2)}
     .scenario-row{display:flex;gap:8px;align-items:center;margin-top:8px}
     .debrief{background:rgba(49,210,138,.1);border:1px solid rgba(49,210,138,.4);border-radius:12px;padding:12px;margin-top:8px;font-size:13px;line-height:1.45}
@@ -100,6 +231,514 @@
     @media (min-width:900px){
       .view.active .desktop-two{display:grid;grid-template-columns:420px 1fr;gap:12px;align-items:start}
       .view.active .desktop-three{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+    }
+    
+    /* -------------------------------------------------------------------------
+       Consolidated layout definitions for body, app, metrics, tabs, tab, view,
+       sync-dock and scope-meta. These unify multiple earlier rules and provide
+       responsive behaviour, particularly for mobile phones. Do not duplicate
+       these definitions elsewhere.
+    ------------------------------------------------------------------------- */
+    body{
+      margin:0;
+      height:100%;
+      background:linear-gradient(180deg,#07101a,#0a1523 40%,#08101c);
+      color:var(--text);
+      min-height:100dvh;
+      padding-top:var(--safe-top);
+      padding-bottom:var(--safe-bottom);
+      overflow:auto;
+    }
+    .app{
+      display:grid;
+      /* Define six rows: header, mission strip, metrics, tabs, main view, footer */
+      grid-template-rows:auto auto auto auto 1fr auto;
+      height:calc(100dvh - var(--safe-top) - var(--safe-bottom));
+      min-height:100vh;
+    }
+    .metrics{
+      display:grid;
+      gap:8px;
+      padding:10px 12px;
+      border-bottom:1px solid var(--line);
+      grid-template-columns:repeat(5,minmax(0,1fr));
+    }
+    @media (max-width:600px){
+      .metrics{grid-template-columns:repeat(2,minmax(0,1fr));}
+    }
+    @media (min-width:601px) and (max-width:900px){
+      .metrics{grid-template-columns:repeat(3,minmax(0,1fr));}
+    }
+    .tabs{
+      display:flex;
+      gap:8px;
+      padding:8px 12px;
+      border-bottom:1px solid var(--line);
+      background:rgba(8,16,28,.92);
+      min-height:48px;
+      overflow-x:auto;
+      overflow-y:hidden;
+      white-space:nowrap;
+      -webkit-overflow-scrolling:touch;
+    }
+    /* Tab rail: single-row horizontal scroll for phone discoverability */
+    .tab{
+      background:var(--panel);
+      border:1px solid var(--line);
+      color:var(--muted);
+      padding:12px 16px;
+      border-radius:14px;
+      font-weight:700;
+      white-space:nowrap;
+      flex:0 0 auto;
+      min-height:32px;
+      font-size:13px;
+    }
+    .tab.active{
+      color:var(--cyan);
+      border-color:rgba(89,215,255,.45);
+      box-shadow:inset 0 0 0 1px rgba(89,215,255,.12);
+    }
+    .view{
+      display:none;
+      overflow-y:auto;
+      overflow-x:hidden;
+      min-height:0;
+      padding:12px;
+    }
+    .view.active{display:block;}
+    .sync-dock{
+      position:sticky;
+      bottom:8px;
+      z-index:10;
+      padding:10px;
+      border:1px solid rgba(89,215,255,.28);
+      background:linear-gradient(180deg,rgba(16,28,45,.96),rgba(10,18,31,.96));
+      backdrop-filter:blur(10px);
+      border-radius:16px;
+      box-shadow:var(--shadow);
+    }
+    /* Remove sticky behaviour on narrow screens to avoid overlap */
+    @media (max-width:600px){
+      .sync-dock{
+        position:relative;
+        bottom:auto;
+      }
+    }
+    .scope-meta{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:8px;
+    }
+    @media (max-width:600px){
+      .scope-meta{grid-template-columns:repeat(2,minmax(0,1fr));}
+    }
+
+    /* -------------------------------------------------------------------------*/
+    /* VISUAL CONVERGENCE STYLES */
+    /* Upgrade shell header */
+    .top{
+      border-bottom:1px solid var(--line-strong);
+      background:linear-gradient(180deg, rgba(4,8,14,.96), rgba(9,16,28,.94));
+      backdrop-filter:blur(10px);
+      box-shadow:0 2px 6px rgba(0,0,0,.4);
+    }
+    .title h1{
+      font-size:20px;
+      letter-spacing:.05em;
+      color:var(--cyan);
+      margin:0;
+    }
+    .subtitle{
+      color:var(--muted);
+      font-size:11px;
+    }
+    /* Brand emblem and taglines */
+    .phoenix-mark{
+      width:46px;
+      height:46px;
+      display:grid;
+      place-items:center;
+      border-radius:10px;
+      border:1px solid rgba(246,196,83,.28);
+      background:linear-gradient(180deg,rgba(255,176,0,.08),rgba(8,17,28,.25));
+      box-shadow:0 0 18px rgba(255,176,0,.16);
+   }
+
+    .phoenix-mark svg{
+       width:38px;
+       height:38px;
+       display:block;
+   }
+
+     .phoenix-mark .wing,
+     .phoenix-mark .core,
+     .phoenix-mark .beak{
+     fill:var(--gold);
+  }
+
+    .phoenix-mark .cut{
+      fill:var(--bg-0);
+      opacity:.9;
+  }
+    .brand .tagline{
+      font-size:10px;
+      letter-spacing:.15em;
+      text-transform:uppercase;
+      color:var(--gold);
+    }
+    .brand .mission-tag{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    /* Console panel styling applied to cards, panels, controls, logs, timing, mission items */
+    .card,
+    .panel,
+    .control,
+    .log,
+    .timing,
+    .mission-strip .item{
+      position:relative;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
+        linear-gradient(180deg, var(--shell), var(--shell-2));
+      border:1px solid var(--line-strong);
+      border-radius:16px;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.04),
+        0 0 0 1px rgba(255,255,255,.02),
+        0 14px 34px rgba(0,0,0,.35);
+    }
+    .card::before,
+    .panel::before,
+    .control::before,
+    .log::before,
+    .timing::before,
+    .mission-strip .item::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      border-radius:inherit;
+      background:
+        linear-gradient(90deg, transparent, rgba(89,215,255,.06), transparent);
+      opacity:.35;
+    }
+
+    /* Mission strip improvements */
+    .mission-strip{
+      border-bottom:1px solid var(--line-strong);
+      background:linear-gradient(180deg, rgba(6,12,20,.92), rgba(10,20,34,.92));
+      padding:6px 12px;
+      gap:8px;
+    }
+    .mission-strip .item{
+      display:flex;
+      align-items:center;
+      gap:4px;
+      padding:4px 8px;
+      font-size:10px;
+      color:var(--text);
+    }
+    .mission-strip .item strong{
+      color:var(--cyan);
+    }
+
+    /* Scope hero visual */
+    .scope-wrap{
+      position:relative;
+      border-radius:22px;
+      border:1px solid var(--line-strong);
+      padding:16px;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(89,215,255,.08), transparent 65%),
+        linear-gradient(180deg, var(--shell), var(--shell-2));
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.03),
+        0 0 40px rgba(0,0,0,.28);
+    }
+
+    /* Sync readiness and fault indicators */
+    @keyframes pulseReady{
+      0%,100%{ box-shadow:none; }
+      50%{ box-shadow:0 0 18px rgba(49,210,138,.28); }
+    }
+    .lamp.ready{
+      animation:pulseReady 2s ease-in-out infinite;
+      background:var(--green);
+      box-shadow:0 0 12px rgba(49,210,138,.8);
+    }
+    .sync-pill.ready{
+      animation:pulseReady 2s ease-in-out infinite;
+      color:var(--green);
+      border-color:rgba(49,210,138,.4);
+      box-shadow:0 0 12px rgba(49,210,138,.4);
+    }
+
+    /* Review deck polish */
+    .log{
+      max-height:300px;
+      overflow:auto;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
+        linear-gradient(180deg, var(--shell), var(--shell-2));
+      border:1px solid var(--line-strong);
+      border-radius:16px;
+      padding:8px;
+      font-family:ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size:11px;
+      line-height:1.4;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.04),
+        0 0 0 1px rgba(255,255,255,.02),
+        0 14px 34px rgba(0,0,0,.35);
+    }
+    .log-entry{
+      border-radius:8px;
+      padding:6px 8px;
+      margin-bottom:6px;
+      background:rgba(255,255,255,.02);
+      border-left:3px solid var(--line-soft);
+    }
+    .log-entry.trip{border-left-color:var(--red);color:#ffd8d8;}
+    .log-entry.good{border-left-color:var(--green);}
+    .log-entry.warn{border-left-color:var(--gold);}
+    .log-entry.fault{border-left-color:var(--gold);color:#ffecb3;}
+    .log-entry.clear{border-left-color:var(--green);color:#d1ffd5;}
+    .log-entry.closecmd{border-left-color:var(--purple);color:#e5d6ff;}
+    .log-entry.closed{border-left-color:var(--cyan);color:#d6f5ff;}
+
+    /* Timing view framing */
+    .timing{
+      overflow:auto;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
+        linear-gradient(180deg, var(--shell), var(--shell-2));
+      border:1px solid var(--line-strong);
+      border-radius:16px;
+      padding:10px;
+      color:var(--text);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.04),
+        0 0 0 1px rgba(255,255,255,.02),
+        0 14px 34px rgba(0,0,0,.35);
+    }
+
+    /* Panel headers for guidance/debrief etc. */
+    .panel h2{
+      color:var(--cyan);
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.1em;
+      margin:0 0 10px;
+    }
+    .guidance-card{
+      border:1px solid rgba(246,196,83,.25);
+      background:
+        linear-gradient(180deg, rgba(246,196,83,.08), rgba(255,255,255,.02));
+      border-radius:16px;
+      padding:12px;
+    }
+    .guidance-card .label{
+      color:var(--gold);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      font-size:11px;
+      font-weight:800;
+    }
+    .guidance-card .value{
+      font-size:15px;
+      font-weight:800;
+      line-height:1.35;
+    }
+    /* Extended training-shell styles: branding, playbook, progression, rotor, instructor */
+    .brand{display:flex;align-items:center;gap:12px;margin-top:6px;padding-left:4px;padding-right:4px}
+    .brand .brand-text{flex:1}
+    .tagline{font-size:10px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:2px}
+    .mission-tag{font-size:12px;color:var(--muted);}
+    /* Hide concept views by default but let them reappear when active */
+    .view.playbook-view, .view.progression-view, .view.rotor-view, .view.instructor-view{display:none;overflow:auto;padding:12px}
+    /* When a concept view is active, override the hidden rule */
+    .view.playbook-view.active,
+    .view.progression-view.active,
+    .view.rotor-view.active,
+    .view.instructor-view.active{display:block}
+    .playbook-card, .progress-card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:12px;box-shadow:var(--shadow)}
+    .playbook-card h3{margin:0 0 6px;font-size:14px;color:var(--cyan);font-weight:700}
+    .playbook-card p{margin:4px 0;font-size:12px;color:var(--muted);line-height:1.4}
+    .playbook-card ul{margin:4px 0 0 16px;padding:0;font-size:11px;color:var(--muted);list-style-type:disc}
+    .progress-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+    .progress-stat{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--radius);padding:10px;text-align:center;box-shadow:var(--shadow)}
+    .progress-stat .label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+    .progress-stat .value{font-size:18px;font-weight:800;margin-top:4px;color:var(--cyan)}
+    .progress-bar{position:relative;background:#0f1b2c;border:1px solid var(--line);border-radius:999px;height:12px;overflow:hidden;margin-top:6px}
+    .progress-bar .fill{position:absolute;top:0;left:0;height:100%;background:linear-gradient(90deg,var(--cyan),var(--green));border-radius:999px;width:0%}
+    .unlock-list{margin-top:8px}
+    .unlock-item{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--radius);padding:10px;margin-bottom:6px;box-shadow:var(--shadow)}
+    .unlock-item.locked{opacity:.45;filter:saturate(.55)}
+    .unlock-item .name{font-size:12px;font-weight:700;color:var(--text)}
+    .unlock-item .status{font-size:11px;color:var(--muted)}
+    .rotor-container{
+    display:grid;
+    grid-template-columns: 220px minmax(320px, 1fr) 220px;
+    align-items:center;
+    gap:24px;
+    padding:24px 12px 32px;
+    min-height:420px;
+  }
+
+  .rotor-side{
+    display:grid;
+    gap:10px;
+  }
+
+  .rotor-readout-card{
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:linear-gradient(180deg,var(--panel),var(--panel2));
+  box-shadow:var(--shadow);
+}
+.rotor-readout-card strong{
+  display:block;
+  font-size:10px;
+  letter-spacing:.08em;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+.rotor-readout-card div:last-child{
+  font-size:18px;
+  font-weight:800;
+  color:var(--text);
+}
+
+  @media (max-width: 980px){
+    .rotor-container{
+      grid-template-columns: 1fr;
+      justify-items:center;
+    }
+    .rotor-side{
+     width:min(520px,100%);
+    grid-template-columns:repeat(2,minmax(0,1fr));
+   }
+  }
+    /* Enlarged rotor disc for better instructional clarity.  The disc scales up while retaining
+       responsive limits; the stator ring grows accordingly. */
+    .rotor-disc{
+      width:320px;
+      height:320px;
+      display:grid;
+      place-items:center;
+      border-radius:50%;
+      background:radial-gradient(circle at center,var(--panel),#0f1b2c 68%, #0a1320 100%);
+      border:5px solid var(--line);
+      position:relative;
+      box-shadow:0 0 24px rgba(89,215,255,.20);
+      transition:transform 0.08s linear, border-color 0.15s linear, box-shadow 0.15s linear;
+      transform-origin:50% 50%;
+      will-change:transform;
+    }
+    .rotor-disc .blade{
+      position:absolute;
+      top:50%;
+      left:50%;
+      width:4px;
+      height:112px;
+      margin-left:-2px;
+      margin-top:-112px;
+      background:var(--gold);
+      transform-origin:50% 100%;
+      border-radius:2px;
+      box-shadow:0 0 8px rgba(246,196,83,.25);
+    }
+
+    /* Stator ring and hub for the rotor visual.  The stator is rendered via a pseudo‑element on
+       the rotor disc.  It remains stationary and uses a dashed outline to suggest slots.  The
+       hub is represented via the ::after pseudo‑element.  When the breaker is closed, the
+       rotor disc receives the .locked class which adds a green glow to indicate synchronous lock. */
+    .rotor-disc::before{
+    content:"";
+    position:absolute;
+    top:-28px;
+    left:-28px;
+    width:calc(100% + 56px);
+    height:calc(100% + 56px);
+    border-radius:50%;
+    border:5px dashed rgba(89,215,255,.28);
+    box-sizing:border-box;
+    pointer-events:none;
+  }
+    .rotor-disc::after{
+      content:"";
+      position:absolute;
+      top:50%;
+      left:50%;
+      transform:translate(-50%,-50%);
+      width:32px;
+      height:32px;
+      border-radius:50%;
+      background:var(--panel2);
+      box-shadow:inset 0 0 4px rgba(255,255,255,.1),0 0 8px rgba(89,215,255,.15);
+      pointer-events:none;
+    }
+    .rotor-disc.locked{
+      box-shadow:0 0 20px var(--green),0 0 12px var(--green) inset;
+      border-color:var(--green);
+    }
+    .rotor-info{
+      margin-top:8px;
+      font-size:11px;
+      color:var(--cyan);
+      font-weight:700;
+      text-align:center;
+      min-height:14px;
+    }
+
+    .instructor-panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:12px;box-shadow:var(--shadow)}
+    .instructor-panel h3{margin:0 0 6px;font-size:14px;color:var(--cyan)}
+    .instructor-panel .row{display:flex;gap:8px;flex-wrap:wrap}
+    .checkbox-group{display:flex;align-items:center;margin-right:12px;font-size:12px;color:var(--muted)}
+    .checkbox-group input{margin-right:6px}
+
+    /* Legend styling for analysis marker colours */
+    .legend{display:flex;flex-wrap:wrap;gap:8px;font-size:10px;color:var(--muted);margin-top:4px;margin-bottom:4px}
+    .legend-item{display:flex;align-items:center;gap:4px}
+    .color-block{display:inline-block;width:12px;height:4px;border-radius:1px}
+    .color-fault{background:#f6c453}
+    .color-fault_clear{background:#31d28a}
+    .color-close_cmd{background:#a78bfa}
+    .color-closed{background:#59d7ff}
+    .color-trip{background:#ff6b6b}
+    .color-scenario{background:#b3a7ff}
+
+    /* -----------------------------------------------------------------------
+       Phone‑specific tab bar behaviour
+
+       On screens under 600px, the lower tab bar should remain as a single
+       horizontal scrolling rail rather than wrapping into multiple rows. The
+       mission strip already scrolls horizontally; the tabs should behave
+       similarly. These overrides disable flex wrapping, enable horizontal
+       scrolling with momentum, hide the scrollbar for cleanliness and ensure
+       each tab maintains its intrinsic width. Scroll‑snap is enabled to
+       encourage alignment on discrete tabs when swiping. These rules are
+       defined late in the stylesheet to override earlier responsive rules.
+    */
+    @media (max-width:600px){
+      .tabs{
+        flex-wrap:nowrap !important;
+        white-space:nowrap !important;
+        overflow-x:auto !important;
+        overflow-y:hidden;
+        -webkit-overflow-scrolling:touch;
+        scroll-snap-type:x proximity;
+      }
+      .tabs::-webkit-scrollbar{ display:none; }
+      .tab{
+        flex:0 0 auto !important;
+        min-width:max-content !important;
+        scroll-snap-align:center;
+      }
     }
   </style>
 </head>
@@ -109,18 +748,45 @@
     <div class="title">
       <div>
         <h1>PHOENIX ENGINEERING PLATFORM</h1>
-        <div class="subtitle">v9.5 — Operator Training Platform • Portable grid synchronizing simulator</div>
+        <div class="subtitle">v10 Dev • Grid ↔ Generator Synchronizing Trainer</div>
       </div>
       <div id="systemBadge" class="badge status-offline">OFFLINE</div>
       <div id="trainingModeBadge" class="mode-badge">FREE RUN</div>
     </div>
+    <!-- Phoenix emblem and mission tagline -->
+    <div class="brand">
+  <div class="phoenix-mark" aria-label="Phoenix Engineering Platform mark">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <path class="wing left" d="M60 64 L14 18 L25 72 L45 87 Z"/>
+      <path class="wing right" d="M60 64 L106 18 L95 72 L75 87 Z"/>
+      <path class="core" d="M60 30 L73 56 L60 106 L47 56 Z"/>
+      <path class="cut left-cut" d="M28 38 L49 58 L44 68 L31 56 Z"/>
+      <path class="cut right-cut" d="M92 38 L71 58 L76 68 L89 56 Z"/>
+      <path class="beak" d="M60 30 L76 38 L63 44 Z"/>
+    </svg>
+  </div>
+  <div class="brand-text">
+    <div class="tagline">OBSERVE → PREDICT → ACT → REVIEW</div>
+    <div class="mission-tag">Mission-grade operator training</div>
+  </div>
+</div>
   </header>
+
+  <!-- Mission briefing strip showing scenario, objective, timer, rank and unlock progress -->
+  <div id="missionStrip" class="mission-strip"></div>
 
   <section class="metrics">
     <div class="card metric"><div class="label">Grid</div><div id="gridBrief" class="value">0 V</div><div id="gridSub" class="sub">0.00 Hz</div></div>
     <div class="card metric"><div class="label">Generator</div><div id="genBrief" class="value" style="color:var(--gold)">0 V</div><div id="genSub" class="sub">0.00 Hz</div></div>
     <div class="card metric"><div class="label">Breaker</div><div id="breakerBrief" class="value status-open">OPEN</div><div id="syncSub" class="sub">Δf 0.000 Hz · Δφ 0.0°</div></div>
     <div class="card metric"><div class="label">Power</div><div id="powerBrief" class="value">0 kW</div><div id="currentSub" class="sub">0 A · PF 1.00</div></div>
+    <!-- Stress meter card adds realism depth by visualising stress from voltage, frequency, phase and current mismatches -->
+    <div class="card metric" title="Stress is computed from voltage, frequency, phase and current mismatches">
+      <div class="label">Stress</div>
+      <div id="stressBrief" class="value">0%</div>
+      <div id="stressSub" class="sub">Low</div>
+      <div class="stress-bar"><div id="stressBarFill" class="fill"></div></div>
+    </div>
   </section>
 
   <nav class="tabs" id="tabs"></nav>
@@ -150,7 +816,7 @@
               <option value="vsag">V-SAG CHALLENGE — Voltage fault training</option>
               <option value="phaseerr">PHASE-ERR DRILL — Angle slip training</option>
               <option value="overcurrent">OVERCURRENT DRILL — High-load trip training</option>
-              <option value="stuck">BRKR-STUCK DRILL — Mechanical fault recovery</option>
+              <option value="stuck">BRKR-STUCK DRILL — Mechanical close-path obstruction drill</option>
               <option value="combined">COMBINED FAULT DRILL — Multi-fault scenario</option>
             </select>
             <button class="btn primary" id="btnLoadScenario">START DRILL</button>
@@ -173,7 +839,7 @@
 
         <!-- Trip summary panel, hidden by default -->
         <section class="card panel" id="tripPanel" style="display:none">
-          <h2>TRIP SUMMARY</h2>
+          <h2>TRIP SUMMARY (Training Aid)</h2>
           <div id="tripContent" class="debrief"></div>
         </section>
 
@@ -293,6 +959,15 @@
       <section class="card panel">
         <h2>Live Trend</h2>
         <canvas id="trend" width="900" height="200"></canvas>
+        <!-- Legend explaining the colours of event markers on the trend chart -->
+        <div class="legend" id="markerLegend">
+          <div class="legend-item"><span class="color-block color-fault"></span><span>Fault</span></div>
+          <div class="legend-item"><span class="color-block color-fault_clear"></span><span>Fault Clear</span></div>
+          <div class="legend-item"><span class="color-block color-close_cmd"></span><span>Close Cmd</span></div>
+          <div class="legend-item"><span class="color-block color-closed"></span><span>Closed</span></div>
+          <div class="legend-item"><span class="color-block color-trip"></span><span>Trip</span></div>
+          <div class="legend-item"><span class="color-block color-scenario"></span><span>Scenario</span></div>
+        </div>
         <div class="hint">5 Hz trend, capped for mobile. Tracks grid Hz, gen Hz, current, and kW.</div>
       </section>
       <section class="card panel">
@@ -301,7 +976,17 @@
           <button class="btn" id="btnReplay">Replay</button>
           <button class="btn" id="btnClearLog">Clear Log</button>
         </div>
+        <!-- Filter chips for event categories -->
+        <div id="logFilters" class="log-filters"></div>
         <div id="log" class="log"></div>
+        <!-- Replay scrub bar appears during replay -->
+        <div id="replayBar" class="replay-bar" style="display:none">
+          <button id="replayPrev">«</button>
+          <button id="replayPlay">Play</button>
+          <button id="replayNext">»</button>
+          <button id="replayTrip">Trip</button>
+          <input id="replaySlider" type="range" min="0" value="0" step="1">
+        </div>
       </section>
     </div>
   </main>
@@ -341,7 +1026,9 @@
           <div class="tiny"><div class="k">Updated</div><div id="teleUpdated" class="v">—</div></div>
         </div>
         <button class="btn" id="btnRefreshTelemetry" style="margin-top:10px">Refresh Overlay</button>
-        <p class="hint">When opened offline or from a local file, Phoenix uses ghost-frequency mode so training remains available without internet access.</p>
+        <!-- Ghost grid toggle allows displaying a simulated net-grid second needle on the synchroscope -->
+        <div class="checkbox-group" style="margin-top:8px"><input type="checkbox" id="ghostToggle" /><label for="ghostToggle">Show Ghost Grid (Simulated)</label></div>
+        <p class="hint">When opened offline or from a local file, Phoenix uses ghost‑frequency mode so training remains available without internet access. The ghost grid pointer is a simulated training aid — it does not represent a real system measurement.</p>
       </section>
       <section class="card panel">
         <h2>Training Use Notes</h2>
@@ -351,11 +1038,126 @@
           3. Use this page to compare simulated machine behavior against system context.
         </div>
       </section>
+      <!-- Advanced telemetry panel (hidden until unlocked) -->
+      <section class="card panel" id="advTelemetryPanel" style="display:none">
+        <h2>Advanced Telemetry</h2>
+        <div class="hint">
+          This panel visualises the second‑needle concept, net‑load influence and ghost grid context. In this concept build, details are simplified; future iterations will include interactive diagrams and more precise telemetry.
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Playbook & Briefing View -->
+  <main id="playbook" class="view playbook-view">
+    <div class="stack">
+      <section class="card panel">
+        <h2>Mission Brief & Playbook</h2>
+        <p class="hint">Use this playbook to understand each scenario before launching. Learning objectives, fault philosophies and scoring tips are summarised here. Take notes and review objectives ahead of each drill.</p>
+      </section>
+      <div id="playbookCards"></div>
+      <section class="card panel">
+        <h2>Operator Notes</h2>
+        <textarea id="operatorNotes" placeholder="Write your own notes here..." style="width:100%;min-height:100px;background:#09111d;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px"></textarea>
+        <p class="hint">Notes persist in your browser for this session only.</p>
+      </section>
+    </div>
+  </main>
+
+  <!-- Progression & Unlocks View -->
+  <main id="progression" class="view progression-view">
+    <div class="stack">
+      <section class="card panel">
+        <h2>Operator Progression & Unlocks</h2>
+        <p class="hint">Track training performance across sessions. Current unlocks expose additional Phoenix training panels and concept modules. They do not yet change core simulator physics.</p>
+      </section>
+      <div id="progressSummary" class="progress-summary"></div>
+      <div id="progressBarContainer" class="progress-card">
+        <div class="label">Total Progress</div>
+        <div class="progress-bar"><div id="totalProgressFill" class="fill"></div></div>
+      </div>
+      <section class="card panel">
+        <h2>Unlocked Modules</h2>
+        <div id="unlockList" class="unlock-list"></div>
+      </section>
+      <section class="card panel">
+        <h2>Best Scenario Scores</h2>
+        <div id="bestScoresList"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Rotor/Flywheel View -->
+  <main id="rotor" class="view rotor-view">
+    <div class="stack">
+      <section class="card panel">
+        <h2>Rotor / Flywheel Visualisation</h2>
+        <p class="hint">Training visual of generator rotor behavior. Rotation tracks generator frequency, RPM is calculated from frequency and pole count, and color/stress cues reflect synchronizing or loaded-machine strain.</p>
+      <div class="rotor-container">
+        <div class="rotor-side" id="rotorLeftRail">
+         <div class="rotor-readout-card"><strong>GEN Hz</strong><div id="rotorF">--</div></div>
+         <div class="rotor-readout-card"><strong>RPM</strong><div id="rotorRPM">--</div></div>
+         <div class="rotor-readout-card"><strong>SLIP</strong><div id="rotorSlip">--</div></div>
+         <div class="rotor-readout-card"><strong>STRESS</strong><div id="rotorStress">--</div></div>
+        </div>
+
+        <div style="display:grid;justify-items:center;gap:10px">
+          <div id="rotorDisc" class="rotor-disc">
+            <div class="blade" style="transform:rotate(0deg)"></div>
+            <div class="blade" style="transform:rotate(120deg)"></div>
+            <div class="blade" style="transform:rotate(240deg)"></div>
+          </div>
+          <div id="rotorInfo" class="rotor-info"></div>
+          <div class="checkbox-group" style="margin-top:8px">
+            <input type="checkbox" id="rotorCollapse" />
+            <label for="rotorCollapse">Hide Rotor Visual</label>
+          </div>
+        </div>
+
+        <div class="rotor-side" id="rotorRightRail">
+          <div class="rotor-readout-card"><strong>BREAKER</strong><div id="rotorBreakerState">--</div></div>
+          <div class="rotor-readout-card"><strong>PHASE</strong><div id="rotorPhase">--</div></div>
+          <div class="rotor-readout-card"><strong>MODE</strong><div id="rotorMode">--</div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Instructor / Challenge Mode View -->
+  <main id="instructor" class="view instructor-view">
+    <div class="stack">
+      <section class="card panel">
+        <h2>Instructor Mode & Challenge Settings</h2>
+        <p class="hint">Enable higher difficulty modes and distractions. Tightened sync windows and extra stressors can help you master the system. Use caution – these settings increase the likelihood of trips if you are not prepared.</p>
+      </section>
+      <div class="instructor-panel">
+        <details open>
+          <summary><strong>Difficulty & Modes</strong></summary>
+          <div class="row" style="margin-top:8px">
+            <div class="checkbox-group"><input type="checkbox" id="challengeToggle" /><label for="challengeToggle">Challenge Mode (tight sync thresholds)</label></div>
+            <div class="checkbox-group"><input type="checkbox" id="noiseToggle" /><label for="noiseToggle">Chaos / Distraction Mode</label></div>
+          </div>
+          <div class="row" style="margin-top:6px">
+            <button class="btn" id="btnSavePreset">Save Preset</button>
+          </div>
+        </details>
+      </div>
+      <div class="instructor-panel">
+        <h3>Instructor Notes</h3>
+        <textarea id="instructorNotes" placeholder="Instructor observations, custom directives..." style="width:100%;min-height:100px;background:#09111d;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px"></textarea>
+        <p class="hint">Notes persist for this session only. In a full deployment, instructor notes could be shared with trainees.</p>
+      </div>
+      <div class="instructor-panel">
+        <details>
+          <summary><strong>Concept Modules (Relay/SPICE Labs)</strong></summary>
+          <p class="hint" style="margin-top:6px">Relay Lab and SPICE modelling remain stub modules in v10 dev. Unlocks expose their panels, but they do not yet drive simulator physics.</p>
+        </details>
+      </div>
     </div>
   </main>
 
   <footer class="footer">
-    <span>Phoenix Engineering Platform © 2026 · v9.5 — Operator Training Platform</span>
+    <span>Phoenix Engineering Platform © 2026 (ARCUS13 BUILT) · v10 — Operator Training Platform</span>
     <span id="clockText">--:--:--.---</span>
   </footer>
 </div>
@@ -422,13 +1224,19 @@
       type: 'OPERATE_THROUGH'
     },
     phaseerr: {
-      objective: 'Operate through PHASE-ERR fault and close only when safe',
+      // In a phase‑error drill the operator cannot directly adjust phase angle.  The
+      // objective is to reduce slip by trimming generator frequency until the relative
+      // angle drift slows and passes through the sync window.  There is no direct
+      // phase knob: phase converges only by reducing slip.  Closure is permitted as
+      // soon as the instantaneous ΔV/Δf/Δφ criteria are met.
+      objective: 'Reduce slip via frequency control; no direct phase control. Let phase drift settle near 0° and close when safe',
       successCondition: (s) => s.breaker === 'CLOSED' && s.faults.has('PHASE-ERR') && Math.abs(s.phaseDeg) < 3,
       failureCondition: (s) => s.scenario.trips > 0,
       scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, faultRecovery: true },
       debriefTemplate: (score, s) => `PHASE-ERR recovered. Safe sync completed after angle stabilization.`,
       // Scenario-specific failure message for PHASE-ERR
-      failTemplate: (s, reason) => `Phase error scenario failed. Adjust frequency and phase angle to align before closing. Review the trip summary and log to understand the slip at trip.`
+      // Updated failure guidance: there is no direct phase knob in this build. Operators must reduce slip via governor control and time their closure as the rotor passes the 12 o'clock position.
+      failTemplate: (s, reason) => `Phase error scenario failed. Reduce slip using governor speed control and close as the angle passes 12 o'clock. There is no direct phase-angle control in this build. Review the trip summary and log to understand the mismatch at trip.`
       ,
       // Automatically start the generator once the grid is healthy; inject fault after generator is running but before sync
       armCondition: (s) => s.gridHealthy && !s.genStarted,
@@ -464,7 +1272,7 @@
       type: 'OPERATE_THROUGH'
     },
     stuck: {
-      objective: 'Diagnose and clear BRKR-STUCK fault then complete safe sync',
+      objective: 'Diagnose and clear a mechanical obstruction (BRKR-STUCK) then complete a safe sync',
       // Success only when the breaker is closed and the BRKR-STUCK fault has been cleared by the operator. If the fault remains active, closure is blocked.
       successCondition: (s) => s.breaker === 'CLOSED' && !s.faults.has('BRKR-STUCK'),
       failureCondition: (s) => s.scenario.trips > 0,
@@ -482,27 +1290,24 @@
       type: 'CLEAR_RECOVER'
     },
     combined: {
-      // Operate‑through simultaneous V‑SAG and PHASE‑ERR. The generator must be raised
-      // above 13 kV and the phase slip kept below 4° before closing. Both faults remain
-      // active during the sync. This reinforces the need to raise voltage and trim
-      // governor speed concurrently. See comments near SCENARIOS for philosophy details.
-      objective: 'Operate through simultaneous V-SAG and PHASE-ERR faults: raise voltage above 13.0 kV and align angle < 4° before closing',
-      successCondition: (s) => s.breaker === 'CLOSED' && s.faults.has('V-SAG') && s.faults.has('PHASE-ERR') && s.genV > 13.0 && Math.abs(s.phaseDeg) < 4,
-      failureCondition: (s) => s.scenario.trips > 0,
-      scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, faultRecovery: true },
-      debriefTemplate: (score, s) => `Combined faults managed. Safe sync completed under stress.`,
-      // Scenario-specific failure message for combined faults
-      failTemplate: (s, reason) => `Combined fault scenario failed. Both voltage and phase faults must be kept within safe limits before closing (raise voltage and trim speed/angle). Review the trip summary to identify which limit was exceeded.`
-      ,
-      // Inject both V-SAG and PHASE-ERR faults once the grid is healthy and before the generator is started
-      armCondition: () => false,
-      injectCondition: (s) => s.gridHealthy && !s.genStarted,
-      faultIds: ['V-SAG','PHASE-ERR'],
-      maxDurationSec: 240
-    ,
-      // Scenario philosophy: operate through simultaneous faults
-      type: 'OPERATE_THROUGH'
-    }
+     // Operator can only correct the generator side. Grid voltage is the disturbed reference.
+     objective: 'Recover from simultaneous V-SAG and PHASE-ERR conditions. Use AVR to restore generator voltage, trim governor speed to reduce slip, let phase drift settle, then close only when ΔV, Δf, and Δφ are within safe limits.',
+    successCondition: (s) =>
+    s.breaker === 'CLOSED' &&
+    s.genV > 13.0 &&
+    Math.abs(s.phaseDeg) < 4 &&
+    Math.abs(s.genF - s.gridF) < 0.03 &&
+    Math.abs(s.genV - s.gridV) * 1000 < 500,
+    failureCondition: (s) => s.scenario.trips > 0,
+    scoringFactors: { timeBonus: true, unsafePenalty: true, tripPenalty: true, faultRecovery: true },
+    debriefTemplate: (score, s) => `Combined fault recovery completed. Voltage was restored, slip was reduced, and safe sync was achieved under stress.`,
+    failTemplate: (s, reason) => `Combined fault scenario failed. First stabilize voltage and slip, then close only when ΔV, Δf, and Δφ are all within limits. Review whether the fault state was still active or whether sync conditions were never reached.`,
+    armCondition: () => false,
+    injectCondition: (s) => s.gridHealthy && !s.genStarted,
+    faultIds: ['V-SAG','PHASE-ERR'],
+    maxDurationSec: 240,
+    type: 'OPERATE_THROUGH'
+  },
   };
 
   function createMachine() {
@@ -537,12 +1342,49 @@
       // dwell timers for sync gating (seconds)
       syncReadyTimer: 0,
       syncLostTimer: 0
+
+      ,
+      /**
+       * Horizon concept additions: progression, challenge and rotor state
+       * rotorAngle: current rotation angle of rotor disc (deg)
+       * challengeMode: tighter sync & trip thresholds when enabled
+       * totalScore: accumulated score across sessions
+       * unlocks: map of unlocked modules
+       * rank: operator tier based on total score
+       */
+      rotorAngle: 0,
+      poleCount: 4,
+      primeMoverRPM: 0,
+      challengeMode: false,
+      totalScore: 0,
+      unlocks: {},
+      rank: 'NOVICE'
+      ,
+    // Ghost grid state: controls optional net frequency overlay on synchroscope
+    ghostGrid: false,
+    ghostAngle: 0,
+      // Log filter settings: categories can be toggled in the analysis view
+      logFilters: { Operator: true, State: true, Fault: true, Trip: true, Scenario: true, Telemetry: true }
     };
   }
 
   function machineResetState(prev) {
     const next = createInitialState();
-    return { ...next, logs: prev?.logs || [], lastScore: prev?.lastScore || 0, bestScore: prev?.bestScore || {} };
+    return {
+      ...next,
+      logs: prev?.logs || [],
+      lastScore: prev?.lastScore || 0,
+      bestScore: prev?.bestScore || {},
+      // Preserve concept state across resets so that progression and challenge flags persist
+      totalScore: prev?.totalScore || 0,
+      unlocks: prev?.unlocks || {},
+      rank: prev?.rank || 'NOVICE',
+      challengeMode: prev?.challengeMode || false,
+      rotorAngle: prev?.rotorAngle || 0
+      ,
+      ghostGrid: prev?.ghostGrid || false,
+      ghostAngle: prev?.ghostAngle || 0
+    };
   }
 
   function transition(machine, event, ctx) {
@@ -606,7 +1448,8 @@
 
   const app = {
     state: createInitialState(),
-    tabs:['sim','analysis','timing','telemetry'],
+    // Extend base tabs with concept views: playbook, progression, rotor, instructor
+    tabs:['sim','analysis','timing','telemetry','playbook','progression','rotor','instructor'],
     /** interval id for nudge repeat */
     nudgeInterval: null,
     els:{},
@@ -614,34 +1457,43 @@
       this.cache();
       this.buildTabs();
       this.bind();
+      // Load progression data (best scores, total score, unlocks, rank)
+      this.loadProgression();
+      // Build static views before simulation starts
+      this.renderPlaybook();
+      this.renderProgression();
+      // Initialize rotor visual
+      this.updateRotor(0);
       this.applyPreset('sync');
       this.refreshTelemetry();
-      this.log('Phoenix v9.5 Operator Training Platform initialized.', 'good');
-      // Perform scenario validation on init for developers. Outputs to console and returns a summary string.
-      if(typeof this.validateScenarios === 'function') {
-        try {
-          const summary = this.validateScenarios();
-          // Store last validation summary for access via console
-          this.state.lastValidation = summary;
-        } catch (e) {
-          console.error('Scenario validation error:', e);
-        }
-      }
-      // Generate a high‑level validation summary for each scenario. This provides developers
-      // with start/success/fail logic paths and guidance expectations. Store result for
-      // later retrieval and log to console. Only available in dev builds.
-      if(typeof this.generateValidationSummary === 'function'){
-        try{
-          const detail = this.generateValidationSummary();
-          this.state.validationReport = detail;
-        } catch(e){
-          console.error('Scenario summary error:', e);
-        }
-      }
+      this.log('Phoenix v10 dev initialized.', 'good');
+      // Render log filter chips for analysis view
+      if(typeof this.renderLogFilters === 'function') this.renderLogFilters();
+      // Initialise mission strip display
+      if(typeof this.updateMissionStrip === 'function') this.updateMissionStrip();
       requestAnimationFrame(this.tick.bind(this));
     },
     cache(){
-      const ids = ['systemBadge','gridBrief','gridSub','genBrief','genSub','breakerBrief','syncSub','powerBrief','currentSub','govSlider','avrSlider','govRead','avrRead','scope','trend','gridStateText','genStateText','breakerInline','leftFlow','rightFlow','kvSlip','kvPhase','kvQ','kvS','kvDV','kvDfAbs','kvDpAbs','kvTemp','syncBandMarker','syncLamp','syncReadyPill','syncReason','log','clockText','timingInput','timingView','timingPreset','teleMode','teleSource','teleFreq','teleLoad','teleUpdated','guidancePanel','scenarioSelect','btnLoadScenario','debriefPanel','debriefContent','trainingModeBadge','scStatus','scArmed','scInjected','scResult','scElapsed','scType','scStable','scopeStatus'];
+      const ids = [
+        'systemBadge','gridBrief','gridSub','genBrief','genSub','breakerBrief','syncSub','powerBrief','currentSub','govSlider','avrSlider','govRead','avrRead','scope','trend',
+        'gridStateText','genStateText','breakerInline','leftFlow','rightFlow','kvSlip','kvPhase','kvQ','kvS','kvDV','kvDfAbs','kvDpAbs','kvTemp',
+        'syncBandMarker','syncLamp','syncReadyPill','syncReason','log','clockText','timingInput','timingView','timingPreset','teleMode','teleSource','teleFreq','teleLoad','teleUpdated',
+        'guidancePanel','scenarioSelect','btnLoadScenario','debriefPanel','debriefContent','trainingModeBadge','scStatus','scArmed','scInjected','scResult','scElapsed','scType','scStable','scopeStatus',
+        // Horizon concept elements
+        'progressSummary','totalProgressFill','unlockList','bestScoresList','rotorDisc','challengeToggle','noiseToggle','instructorNotes','playbookCards',
+        // Stress meter elements
+        'stressBrief','stressSub','stressBarFill',
+        // Rotor info readout
+        'rotorInfo',
+        // Rotor extended readouts
+        'rotorF','rotorRPM','rotorSlip','rotorStress','rotorBreakerState','rotorPhase','rotorMode',
+        // Analysis filter & replay elements
+        'logFilters','replayBar','replayPrev','replayPlay','replayNext','replayTrip','replaySlider',
+        // Ghost grid toggle and rotor collapse
+        'ghostToggle','rotorCollapse',
+        // Mission strip
+        'missionStrip'
+      ];
       ids.forEach(id=>this.els[id]=document.getElementById(id));
       this.scopeCtx = this.els.scope.getContext('2d');
       this.trendCtx = this.els.trend.getContext('2d');
@@ -649,11 +1501,37 @@
     buildTabs(){
       const nav = document.getElementById('tabs');
       nav.innerHTML = '';
-      const names = {sim:'Grid Simulator',analysis:'Analysis & Logging',timing:'Timing Studio',telemetry:'Grid Overlay'};
+      // Full and short names for tabs; short names show on narrow screens
+      const names = {
+        sim:'Grid Simulator',
+        analysis:'Analysis & Logging',
+        timing:'Timing Studio',
+        telemetry:'Grid Overlay',
+        playbook:'Playbook / Briefing',
+        progression:'Progression & Unlocks',
+        rotor:'Rotor Visual',
+        instructor:'Instructor Mode'
+      };
+      const shortNames = {
+        sim:'Sim',
+        analysis:'Analysis',
+        timing:'Timing',
+        telemetry:'Overlay',
+        playbook:'Playbook',
+        progression:'Progress',
+        rotor:'Rotor',
+        instructor:'Instructor'
+      };
       this.tabs.forEach((id, idx)=>{
         const b = document.createElement('button');
-        b.className = 'tab' + (idx===0?' active':''); b.textContent = names[id];
-        b.addEventListener('click', ()=>this.openTab(id,b)); nav.appendChild(b);
+        b.className = 'tab' + (idx===0?' active':'');
+        // Build full and short labels
+        const full = document.createElement('span'); full.className = 'full-label'; full.textContent = names[id] || id;
+        const short = document.createElement('span'); short.className = 'short-label'; short.textContent = shortNames[id] || names[id] || id;
+        b.appendChild(full);
+        b.appendChild(short);
+        b.addEventListener('click', ()=>this.openTab(id,b));
+        nav.appendChild(b);
       });
     },
     openTab(id, btn){
@@ -662,13 +1540,16 @@
       document.getElementById(id).classList.add('active'); btn.classList.add('active');
       if(id==='timing') this.renderTiming();
       if(id==='analysis') this.drawTrend();
+      // Render concept views when activated to ensure up‑to‑date content
+      if(id==='playbook') this.renderPlaybook();
+      if(id==='progression') this.renderProgression();
     },
     bind(){
       const on = (id, fn)=>document.getElementById(id).addEventListener('click', fn);
       on('btnSimStart', ()=>this.startSim()); on('btnGridStart', ()=>this.startGrid()); on('btnGenStart', ()=>this.startGen()); on('btnGenStop', ()=>this.stopGen());
       on('btnPause', ()=>this.togglePause()); on('btnReset', ()=>this.resetAll()); on('btnToggleBreaker', ()=>this.toggleBreakerCommand()); on('btnToggleBreakerDock', ()=>this.toggleBreakerCommand()); on('btnTrip', ()=>this.tripBreaker('Manual trip command'));
       on('btnResetBreaker', ()=>this.resetBreaker()); on('btnAutoMatch', ()=>this.toggleAutoMatch()); on('btnAutoMatchDock', ()=>this.toggleAutoMatch()); on('btnRaiseLoad', ()=>this.raiseLoad()); on('btnLowerLoad', ()=>this.lowerLoad()); on('btnChaos', ()=>this.toggleChaos()); on('btnExport', ()=>this.exportLogs());
-      on('btnClearFaults', ()=>this.clearFaults()); on('btnReplay', ()=>this.replayLogs()); on('btnClearLog', ()=>this.clearLogs()); on('btnLoadPreset', ()=>this.applyPreset(this.els.timingPreset.value)); on('btnRenderTiming', ()=>this.renderTiming()); on('btnRefreshTelemetry', ()=>this.refreshTelemetry());
+      on('btnClearFaults', ()=>this.clearFaults()); on('btnReplay', ()=>this.toggleReplay()); on('btnClearLog', ()=>this.clearLogs()); on('btnLoadPreset', ()=>this.applyPreset(this.els.timingPreset.value)); on('btnRenderTiming', ()=>this.renderTiming()); on('btnRefreshTelemetry', ()=>this.refreshTelemetry());
       on('btnLoadScenario', ()=>this.loadScenario());
       this.els.govSlider.addEventListener('input', e=>{ this.state.govSet = parseFloat(e.target.value); this.els.govRead.textContent = this.state.govSet.toFixed(2)+' Hz'; });
       this.els.avrSlider.addEventListener('input', e=>{ this.state.avrSet = parseFloat(e.target.value); this.els.avrRead.textContent = this.state.avrSet.toFixed(2)+' kV'; });
@@ -697,6 +1578,25 @@
           btn.addEventListener(ev, stopRepeat);
         });
       });
+      // Bind instructor mode toggles (challenge & noise). These checkboxes live in the Instructor tab and
+      // update simulator settings directly when toggled. If the elements are absent, skip gracefully.
+      const chalBox = this.els.challengeToggle;
+      if (chalBox) chalBox.addEventListener('change', () => this.handleChallengeCheckbox());
+      const noiseBox = this.els.noiseToggle;
+      if (noiseBox) noiseBox.addEventListener('change', () => this.handleNoiseCheckbox());
+
+      // Bind ghost grid toggle
+      if(this.els.ghostToggle){ this.els.ghostToggle.addEventListener('change', ()=>this.toggleGhostGrid()); }
+      // Bind rotor collapse toggle
+      if(this.els.rotorCollapse){ this.els.rotorCollapse.addEventListener('change', ()=>this.toggleRotorCollapse()); }
+      // Bind instructor save preset button
+      const btnSave = document.getElementById('btnSavePreset'); if(btnSave) btnSave.addEventListener('click', ()=>this.saveInstructorPreset());
+      // Bind replay controls
+      if(this.els.replayPrev) this.els.replayPrev.addEventListener('click', ()=>this.replayStep(-1));
+      if(this.els.replayNext) this.els.replayNext.addEventListener('click', ()=>this.replayStep(1));
+      if(this.els.replayPlay) this.els.replayPlay.addEventListener('click', ()=>this.toggleReplayPlayPause());
+      if(this.els.replayTrip) this.els.replayTrip.addEventListener('click', ()=>this.jumpToTrip());
+      if(this.els.replaySlider) this.els.replaySlider.addEventListener('input', (e)=>this.replaySeek(parseInt(e.target.value)));
     },
 
     /**
@@ -731,11 +1631,71 @@
       const dv = Math.abs(s.genV - s.gridV) * 1000;
       const df = Math.abs(s.genF - s.gridF);
       const dphi = Math.abs(this.wrapDeg(s.phaseDeg));
+      // Use dynamic thresholds based on challenge mode. Tighten thresholds when challengeMode is true.
+      const dvLimit = this.state.challengeMode ? 300 : 500;
+      const dfLimit = this.state.challengeMode ? 0.02 : 0.03;
+      const dphiLimit = this.state.challengeMode ? 3 : 5;
       const syncSafe = (
         s.gridHealthy && s.genStarted && s.breaker === 'OPEN' && !s.faults.has('OVERCURRENT') && !s.faults.has('BRKR-STUCK') &&
-        dv < 500 && df < 0.03 && dphi < 5
+        dv < dvLimit && df < dfLimit && dphi < dphiLimit
       );
       return { gridHealthy: s.gridHealthy, genStarted: s.genStarted, breaker: s.breaker, faults: s.faults, dv, df, dphi, syncSafe };
+    },
+
+    /**
+     * Determine breaker close eligibility by combining voltage/frequency/phase thresholds,
+     * grid and generator status, dwell requirements and scenario‑specific rules. This
+     * helper is the single source of truth used by UI (sync pill, reason text and
+     * breaker button) and by the close command handler. It returns a structured
+     * object describing the safety state and reasons for any block.
+     */
+    getCloseEligibility(){
+      const ctx = this.deriveContext();
+      // Evaluate mismatches against dynamic thresholds (challenge mode tightens limits)
+      const dvLimit = this.state.challengeMode ? 300 : 500;
+      const dfLimit = this.state.challengeMode ? 0.02 : 0.03;
+      const dphiLimit = this.state.challengeMode ? 3 : 5;
+      const withinVoltage = ctx.dv < dvLimit;
+      const withinFreq = ctx.df < dfLimit;
+      const withinPhase = ctx.dphi < dphiLimit;
+      const gridHealthy = ctx.gridHealthy;
+      const genStarted = ctx.genStarted;
+      const breakerOpen = ctx.breaker === 'OPEN';
+      const noBlockFaults = !ctx.faults.has('OVERCURRENT') && !ctx.faults.has('BRKR-STUCK');
+      const instantSafe = gridHealthy && genStarted && breakerOpen && noBlockFaults && withinVoltage && withinFreq && withinPhase;
+      const dwellMet = this.state.machine && this.state.machine.mode === MODE.SYNC_WINDOW;
+      const phaseErr = this.state.scenario && this.state.scenario.active && this.state.scenario.id === 'phaseerr';
+      // The breaker can close if it is not tripped or already closed, instant safe conditions are met,
+      // and either the dwell has been satisfied (SYNC_WINDOW) or the scenario permits immediate closing (PHASE‑ERR).
+      let canClose = false;
+      if(this.state.breaker !== 'TRIPPED' && this.state.breaker !== 'CLOSED' && !ctx.faults.has('BRKR-STUCK')){
+        if(instantSafe && (dwellMet || phaseErr)) canClose = true;
+      }
+      // Determine a concise reason for training guidance
+      let reasonCode = '';
+      let reasonText = '';
+      if(this.state.breaker === 'TRIPPED'){
+        reasonCode = 'TRIPPED'; reasonText = 'Breaker tripped';
+      } else if(!gridHealthy){
+        reasonCode = 'GRID'; reasonText = 'Grid not healthy';
+      } else if(!genStarted){
+        reasonCode = 'GEN'; reasonText = 'Generator offline';
+      } else if(ctx.faults.has('BRKR-STUCK')){
+        reasonCode = 'STUCK'; reasonText = 'Breaker stuck fault active';
+      } else if(!withinVoltage || !withinFreq || !withinPhase){
+        reasonCode = 'MISMATCH';
+        const parts = [];
+        if(!withinVoltage) parts.push('Trim voltage');
+        if(!withinFreq) parts.push('Trim speed');
+        if(!withinPhase) parts.push('Wait angle');
+        reasonText = parts.join(' · ');
+      } else if(!canClose && !phaseErr){
+        // All mismatches satisfied but dwell not yet met
+        reasonCode = 'DWELL'; reasonText = 'Hold thresholds (dwell)';
+      } else {
+        reasonCode = 'SAFE'; reasonText = 'Within sync window';
+      }
+      return { ctx, withinVoltage, withinFreq, withinPhase, instantSafe, dwellMet, phaseErr, canClose, reasonCode, reasonText };
     },
 
     applyModeDerivedState(){
@@ -836,168 +1796,572 @@
         }
       }
     },
-
-    /**
-     * validateScenarios()
+          /**
+     * loadProgression()
      *
-     * Development helper that inspects the scenario definitions and internal state for consistency. It
-     * verifies that each scenario has the required callbacks and philosophy fields, that the marker
-     * indices are in ascending order, and that trip snapshots (if any) capture the expected fields. It
-     * returns a multi‑line string summarising the findings and also logs the summary to the console.
+     * Load persistent progression data from localStorage. This includes best scores,
+     * total accumulated score, unlocked modules and operator rank. If no saved
+     * data is found or parsing fails, the existing state values remain. This
+     * helper should be called during init() to restore progression across sessions.
      */
-    validateScenarios(){
-      const lines = [];
-      for(const id of Object.keys(SCENARIOS)){
-        const def = SCENARIOS[id];
-        const type = def.type || 'UNKNOWN';
-        // Basic callback checks
-        const hasArm = typeof def.armCondition === 'function';
-        const hasInject = typeof def.injectCondition === 'function';
-        const hasSuccess = typeof def.successCondition === 'function';
-        const hasFail = typeof def.failureCondition === 'function';
-        const ok = hasArm && hasInject && hasSuccess && hasFail;
-        lines.push(`${id.toUpperCase()} (${type}): callbacks ${ok ? 'OK' : 'MISSING'}`);
-        // Summarise philosophy
-        if(type === 'OPERATE_THROUGH'){
-          lines.push(`  ▸ Operate through fault(s) ${def.faultIds && def.faultIds.length ? def.faultIds.join(', ') : ''}`);
-        } else if(type === 'CLEAR_RECOVER'){
-          lines.push(`  ▸ Clear fault(s) ${def.faultIds && def.faultIds.length ? def.faultIds.join(', ') : ''} before syncing`);
-        } else if(type === 'CLEAN_SYNC'){
-          lines.push('  ▸ Clean sync with no faults');
-        } else {
-          lines.push('  ▸ Unknown philosophy');
+    loadProgression(){
+      try{
+        const saved = localStorage.getItem('phoenix_progression');
+        if(saved){
+          const obj = JSON.parse(saved);
+          if(obj.bestScore) this.state.bestScore = obj.bestScore;
+          if(typeof obj.totalScore === 'number') this.state.totalScore = obj.totalScore;
+          if(obj.unlocks) this.state.unlocks = obj.unlocks;
+          if(obj.rank) this.state.rank = obj.rank;
         }
-        // Summarise logic paths (start, success, failure) by referencing callback names
-        lines.push(`  ▸ Arm when: ${def.armCondition.toString().replace(/\n/g,' ').substr(0,100)}`);
-        lines.push(`  ▸ Inject when: ${def.injectCondition.toString().replace(/\n/g,' ').substr(0,100)}`);
-        lines.push(`  ▸ Success when: ${def.successCondition.toString().replace(/\n/g,' ').substr(0,100)}`);
-        lines.push(`  ▸ Fail when: ${def.failureCondition.toString().replace(/\n/g,' ').substr(0,100)}`);
-      }
-      // Marker ordering check
-      const markers = this.state.markers;
-      let markerOk = true;
-      for(let i=1;i<markers.length;i++){
-        if(typeof markers[i].idx === 'number' && typeof markers[i-1].idx === 'number'){
-          if(markers[i].idx < markers[i-1].idx) markerOk = false;
-        }
-      }
-      lines.push(markerOk ? 'Markers sorted by idx: OK' : 'Markers sorted by idx: ERROR');
-      // Trip snapshot integrity check
-      if(this.state.tripSnapshot){
-        const snap = this.state.tripSnapshot;
-        const keys = ['dv','df','dphi','current','faults','scenarioId'];
-        const missing = keys.filter(k => !(k in snap));
-        lines.push(missing.length === 0 ? 'Trip snapshot integrity: OK' : `Trip snapshot missing: ${missing.join(', ')}`);
-      } else {
-        lines.push('Trip snapshot integrity: no snapshot recorded');
-      }
-      const report = lines.join('\n');
-      console.log(report);
-      return report;
+      }catch(e){ console.warn('Progression load failed:', e); }
     },
 
     /**
-     * generateValidationSummary()
+     * saveProgression()
      *
-     * Development helper that produces a higher‑level report about each scenario. It
-     * summarises the declared philosophy (type), the high‑level logic for arming and
-     * injection, and the success and failure conditions. It also reports whether
-     * the blocker/guidance alignment is consistent with the scenario philosophy. The
-     * summary is logged to the console and returned as a string. This helper does
-     * not alter runtime behaviour and should be used only for manual verification.
+     * Persist current progression data to localStorage. Serialises best scores,
+     * totalScore, unlocks and rank into a JSON string. Called whenever
+     * progression is updated.
      */
-    generateValidationSummary(){
-      const lines = [];
-      for(const id of Object.keys(SCENARIOS)){
-        const def = SCENARIOS[id];
-        const type = def.type || 'UNKNOWN';
-        lines.push(`${id.toUpperCase()} — ${type}`);
-        // Summarise start/arming logic
-        const arm = def.armCondition ? def.armCondition.toString().replace(/\n/g,' ').slice(0,120) : '—';
-        const inj = def.injectCondition ? def.injectCondition.toString().replace(/\n/g,' ').slice(0,120) : '—';
-        const succ = def.successCondition ? def.successCondition.toString().replace(/\n/g,' ').slice(0,120) : '—';
-        const fail = def.failureCondition ? def.failureCondition.toString().replace(/\n/g,' ').slice(0,120) : '—';
-        lines.push(`  arm when: ${arm}`);
-        lines.push(`  inject when: ${inj}`);
-        lines.push(`  success when: ${succ}`);
-        lines.push(`  fail when: ${fail}`);
-        // Guidance / blocker alignment note: operate‑through scenarios should not ask to clear faults
-        let guidanceNote = '';
-        if(type === 'OPERATE_THROUGH'){
-          guidanceNote = 'Expect guidance: tune controls (raise AVR, trim speed, lower load) — no fault clearance';
-        } else if(type === 'CLEAR_RECOVER'){
-          guidanceNote = 'Expect guidance: clear faults and reset breaker before closing';
-        } else if(type === 'CLEAN_SYNC'){
-          guidanceNote = 'Expect guidance: no faults, follow standard sync procedure';
-        } else {
-          guidanceNote = 'No explicit philosophy set';
-        }
-        lines.push(`  guidance hint: ${guidanceNote}`);
-      }
-      const summary = lines.join('\n');
-      console.log(summary);
-      return summary;
+    saveProgression(){
+      try{
+        const data = {
+          bestScore: this.state.bestScore,
+          totalScore: this.state.totalScore,
+          unlocks: this.state.unlocks,
+          rank: this.state.rank
+        };
+        localStorage.setItem('phoenix_progression', JSON.stringify(data));
+      }catch(e){ console.warn('Progression save failed:', e); }
     },
 
     /**
-     * runFunctionChecks()
+     * updateProgressionAfterScenario()
      *
-     * Perform lightweight structural checks of the simulator without mutating runtime state. This
-     * helper inspects the existence of critical functions, state fields, scenario definitions and
-     * trip snapshot composition. It returns a multi‑line string summarising the outcome. Use this
-     * during development for quick verification; it has no side effects.
+     * Update the progression state after a scenario concludes. On successful
+     * scenarios, the scenario score contributes to the total score. Unlock
+     * modules based on the number of distinct scenarios completed with
+     * satisfactory scores. Update operator rank accordingly. Finally persist
+     * progression and refresh the progression view.
      */
-    runFunctionChecks(){
-      const lines = [];
-      // Initial machine state
-      lines.push('Machine initial mode: ' + (this.state.machine && this.state.machine.mode));
-      // Existence of core start functions
-      lines.push('startSim exists: ' + (typeof this.startSim === 'function'));
-      lines.push('startGrid exists: ' + (typeof this.startGrid === 'function'));
-      lines.push('startGen exists: ' + (typeof this.startGen === 'function'));
-      // Presence of sync gating timers in state
-      ['syncReadyTimer','syncLostTimer'].forEach(f => {
-        lines.push('State has ' + f + ': ' + (this.state.hasOwnProperty(f)));
-      });
-      // Validate trip snapshot keys via static inspection of tripBreaker function
-      const tripKeys = ['dv','df','dphi','current','faults','scenarioId'];
-      if(typeof this.tripBreaker === 'function'){
-        const code = this.tripBreaker.toString();
-        const missing = tripKeys.filter(k => !code.includes(k + ':'));
-        if(missing.length > 0) lines.push('Trip snapshot keys missing in tripBreaker: ' + missing.join(', '));
-        else lines.push('Trip snapshot keys present in tripBreaker: OK');
-      } else {
-        lines.push('tripBreaker function not found');
+    updateProgressionAfterScenario(){
+      const sc = this.state.scenario;
+      // Only update on success
+      if(!sc || sc.scenarioEndReason !== 'success'){
+        this.renderProgression();
+        return;
       }
-      // Verify each scenario has required callbacks
-      let scenarioOk = true;
+      // Add current scenario score to total
+      this.state.totalScore += sc.score || 0;
+      // Determine rank based on totalScore thresholds. These tiers are arbitrary and can be tuned.
+      const ts = this.state.totalScore;
+      if(ts >= 720){ this.state.rank = 'MASTER'; }
+      else if(ts >= 480){ this.state.rank = 'EXPERT'; }
+      else if(ts >= 240){ this.state.rank = 'INTERMEDIATE'; }
+      else if(ts >= 120){ this.state.rank = 'NOVICE'; }
+      else { this.state.rank = 'TRAINEE'; }
+      // Determine how many scenarios have been completed with passing scores (≥60). Use bestScore record.
+      const passCount = Object.keys(this.state.bestScore).filter(k => {
+        const val = this.state.bestScore[k];
+        return typeof val === 'number' && val >= 60;
+      }).length;
+      // Unlock modules progressively based on pass count. Use boolean flags in state.unlocks.
+      if(passCount >= 1) this.state.unlocks.advTelemetry = true;
+      if(passCount >= 2) this.state.unlocks.rotor = true;
+      if(passCount >= 3) this.state.unlocks.playbook = true;
+      if(passCount >= 4) this.state.unlocks.instructor = true;
+      if(passCount >= 5) this.state.unlocks.relayLab = true;
+      if(passCount >= 6) this.state.unlocks.spiceLab = true;
+      this.saveProgression();
+      this.renderProgression();
+    },
+
+    /**
+     * renderProgression()
+     *
+     * Populate the progression tab with current stats, progress bar, unlocked modules
+     * and best scores per scenario. Called when the tab is opened or when
+     * progression is updated.
+     */
+    renderProgression(){
+      const summary = this.els.progressSummary;
+      if(!summary) return;
+      // Clear previous contents
+      summary.innerHTML = '';
+      // Compute stats
+      const completed = Object.keys(this.state.bestScore).length;
+      const statData = [
+        { label:'Scenarios Completed', value: `${completed} / ${Object.keys(SCENARIOS).length}` },
+        { label:'Total Score', value: Math.round(this.state.totalScore) },
+        { label:'Rank', value: this.state.rank }
+      ];
+      statData.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'progress-stat';
+        const label = document.createElement('div'); label.className = 'label'; label.textContent = item.label;
+        const value = document.createElement('div'); value.className = 'value'; value.textContent = item.value;
+        div.appendChild(label); div.appendChild(value);
+        summary.appendChild(div);
+      });
+      // Update progress bar (percentage of scenarios completed)
+      const fill = this.els.totalProgressFill;
+      if(fill){
+        const percent = (completed / Object.keys(SCENARIOS).length) * 100;
+        fill.style.width = percent + '%';
+      }
+      // Render unlock list
+      const list = this.els.unlockList;
+      if(list){
+        list.innerHTML = '';
+        const modules = [
+          { key:'advTelemetry', name:'Advanced Telemetry' },
+          { key:'rotor', name:'Rotor/Flywheel Visual' },
+          { key:'playbook', name:'Expanded Playbook' },
+          { key:'instructor', name:'Instructor Mode' },
+          { key:'relayLab', name:'Relay Lab' },
+          { key:'spiceLab', name:'SPICE Modelling' }
+        ];
+        modules.forEach(mod => {
+          const item = document.createElement('div');
+          item.className = 'unlock-item' + (this.state.unlocks[mod.key] ? '' : ' locked');
+          const n = document.createElement('span'); n.className = 'name'; n.textContent = mod.name;
+          const st = document.createElement('span'); st.className = 'status'; st.textContent = this.state.unlocks[mod.key] ? 'Unlocked' : 'Locked';
+          item.appendChild(n); item.appendChild(st);
+          list.appendChild(item);
+        });
+      }
+      // Render best score list
+      const scoreList = this.els.bestScoresList;
+      if(scoreList){
+        scoreList.innerHTML = '';
+        for(const id of Object.keys(SCENARIOS)){
+          const div = document.createElement('div');
+          div.className = 'unlock-item';
+          const n = document.createElement('span'); n.className = 'name'; n.textContent = id.toUpperCase();
+          const st = document.createElement('span'); st.className = 'status';
+          const sc = this.state.bestScore[id];
+          st.textContent = typeof sc === 'number' ? `${Math.round(sc)} / 120` : '—';
+          div.appendChild(n); div.appendChild(st);
+          scoreList.appendChild(div);
+        }
+      }
+      // Toggle concept module visibility: advanced telemetry panel
+      const adv = document.getElementById('advTelemetryPanel');
+      if(adv) adv.style.display = this.state.unlocks.advTelemetry ? 'block' : 'none';
+    },
+
+    /**
+     * renderPlaybook()
+     *
+     * Build or update the playbook tab with scenario briefings. Each card summarises
+     * the objective, philosophy and high‑level guidance for the corresponding
+     * scenario. Run this when the playbook tab is activated.
+     */
+    renderPlaybook(){
+      const container = document.getElementById('playbookCards');
+      if(!container) return;
+      container.innerHTML = '';
       for(const id of Object.keys(SCENARIOS)){
         const def = SCENARIOS[id];
-        const hasArm = typeof def.armCondition === 'function';
-        const hasInject = typeof def.injectCondition === 'function';
-        const hasSuccess = typeof def.successCondition === 'function';
-        const hasFail = typeof def.failureCondition === 'function';
-        if(!(hasArm && hasInject && hasSuccess && hasFail)) scenarioOk = false;
+        const card = document.createElement('div'); card.className = 'playbook-card';
+        const h3 = document.createElement('h3');
+        // Clarify the BRKR-STUCK scenario name to emphasise mechanical obstruction. Other scenarios are left unchanged.
+        if(id === 'stuck'){
+          h3.textContent = 'STUCK (Mechanical)';
+        } else {
+          h3.textContent = id.toUpperCase();
+        }
+        card.appendChild(h3);
+        const p = document.createElement('p'); p.textContent = def.objective || ''; card.appendChild(p);
+        const ul = document.createElement('ul');
+        // Philosophy line
+        const liType = document.createElement('li');
+        let typeDesc;
+        if(def.type === 'CLEAN_SYNC') typeDesc = 'Clean sync (no faults)';
+        else if(def.type === 'OPERATE_THROUGH') typeDesc = 'Operate through fault(s)';
+        else if(def.type === 'CLEAR_RECOVER') typeDesc = 'Clear & recover';
+        else typeDesc = def.type;
+        // Provide more context for the stuck scenario type (mechanical obstruction)
+        if(id === 'stuck' && def.type === 'OPERATE_THROUGH') typeDesc += ' — mechanical obstruction';
+        liType.textContent = 'Type: ' + typeDesc;
+        ul.appendChild(liType);
+        // Fault list
+        if(def.faultIds && def.faultIds.length){
+          const liFault = document.createElement('li'); liFault.textContent = 'Faults: ' + def.faultIds.join(', ');
+          ul.appendChild(liFault);
+        }
+        // High-level guidance
+        const liHint = document.createElement('li');
+        if(def.type === 'CLEAN_SYNC') liHint.textContent = 'Follow standard sync procedure, avoid unsafe attempts.';
+        else if(def.type === 'OPERATE_THROUGH') liHint.textContent = 'Manage fault effects (raise AVR, trim governor) and sync safely.';
+        else if(def.type === 'CLEAR_RECOVER') liHint.textContent = 'Identify, clear and reset faults before closing breaker.';
+        else liHint.textContent = 'Refer to scenario objective.';
+        card.appendChild(ul);
+        container.appendChild(card);
       }
-      lines.push('Scenario definitions have required callbacks: ' + scenarioOk);
-      // Check overcurrent scenario success condition references dwell fields
-      const ocDef = SCENARIOS.overcurrent;
-      let ocFieldsOk = false;
-      if(ocDef && typeof ocDef.successCondition === 'function'){
-        const defStr = ocDef.successCondition.toString();
-        ocFieldsOk = defStr.includes('overcurrentStableTime') && defStr.includes('injectionPerformed');
+    },
+
+    /**
+     * updateRotor(dt)
+     *
+     * Animate the rotor/flywheel visual based on generator frequency. Adjust the
+     * rotation angle each frame and update the disc border colour to reflect
+     * frequency mismatch stress. Called from tick() with the elapsed time.
+     */
+        updateRotor(dt){
+      const disc = this.els.rotorDisc;
+      if(!disc) return;
+
+      const s = this.state;
+
+      if(this.state.rotorCollapsed){
+        disc.style.display = 'none';
+        return;
+      } else {
+        disc.style.display = 'block';
       }
-      lines.push('Overcurrent success condition checks dwell fields: ' + ocFieldsOk);
-      // Lower‑load button presence
-      const llBtn = document.getElementById('btnLowerLoad');
-      lines.push('Lower‑load control present: ' + !!llBtn);
-      // Scenario state panel elements presence
-      ['scStatus','scArmed','scInjected','scResult','scElapsed','scType','scStable'].forEach(id => {
-        lines.push(id + ' element present: ' + !!this.els[id]);
+
+      const stress = this.state.stressRatio || 0;
+      const locked = s.breaker === 'CLOSED';
+      const polePairs = Math.max(1, (s.poleCount || 4) / 2);
+      const mechRPM = (s.genF * 60) / polePairs;
+      s.primeMoverRPM = mechRPM;
+
+      /*
+       * Training-display scale:
+       * literal synchronous mechanical speed is too visually fast for a readable browser rotor.
+       * Keep proportional behavior, but slow the visible animation so lock / slip can be taught.
+       */
+      const rotorDisplayScale = 0.08;
+      const displayDegPerSec = s.genF * 360 * rotorDisplayScale;
+
+      s.rotorAngle = (s.rotorAngle || 0) + displayDegPerSec * dt;
+
+      if(locked){
+        s.rotorAngle = (s.gridAngle * rotorDisplayScale) % 360;
+      }
+
+      s.rotorAngle = ((s.rotorAngle % 360) + 360) % 360;
+      disc.style.transform = `translateZ(0) rotate(${s.rotorAngle.toFixed(3)}deg)`;
+
+      const hue = 120 - 120 * stress;
+      disc.style.borderColor = `hsl(${hue}, 80%, 50%)`;
+
+      if(locked){
+       disc.classList.add('locked');
+       if(this.els.rotorInfo){
+        this.els.rotorInfo.textContent = `LOCKED • ${Math.round(stress * 100)}% STRESS`;
+       }
+     } else {
+       disc.classList.remove('locked');
+       if(this.els.rotorInfo){
+         this.els.rotorInfo.textContent = `TRACKING • ${Math.abs(s.slipHz).toFixed(3)} Hz slip`;
+       }
+      }
+
+      if(this.els.rotorF){
+        this.els.rotorF.textContent = `${s.genF.toFixed(2)} Hz`;
+      }
+
+      if(this.els.rotorRPM){
+        this.els.rotorRPM.textContent = `${Math.round(s.primeMoverRPM || 0)} rpm`;
+      }
+
+      if(this.els.rotorSlip){
+        const slip = Math.abs(s.genF - s.gridF);
+        this.els.rotorSlip.textContent = `${slip.toFixed(3)} Hz`;
+      }
+
+      if(this.els.rotorStress){
+        const stressPct = Math.round(stress * 100);
+        this.els.rotorStress.textContent = `${stressPct}%`;
+        this.els.rotorStress.style.color = `hsl(${hue}, 80%, 60%)`;
+      }
+
+      if(this.els.rotorBreakerState){
+        this.els.rotorBreakerState.textContent = s.breaker;
+      }
+
+      if(this.els.rotorPhase){
+        this.els.rotorPhase.textContent = `${Math.abs(this.wrapDeg(s.phaseDeg)).toFixed(1)}°`;
+      }
+
+      if(this.els.rotorMode){
+        this.els.rotorMode.textContent = this.state.machine.mode.replaceAll('_',' ');
+      }
+     },
+
+    /**
+     * toggleRotorCollapse()
+     *
+     * Toggle visibility of the rotor disc visual to accommodate lower‑end devices. When
+     * collapsed the rotor disc is hidden and updateRotor() will skip rendering. The
+     * checkbox in the Rotor view controls this state.
+     */
+    toggleRotorCollapse(){
+      this.state.rotorCollapsed = !this.state.rotorCollapsed;
+      // Sync checkbox state
+      if(this.els.rotorCollapse) this.els.rotorCollapse.checked = this.state.rotorCollapsed;
+      // Immediately update rotor display
+      this.updateRotor(0);
+    },
+
+    /**
+     * toggleGhostGrid()
+     *
+     * Enable or disable the ghost grid (second needle) on the synchroscope. When
+     * enabled, a simulated net frequency is shown using a separate pointer. Toggling
+     * does not affect simulation physics.
+     */
+    toggleGhostGrid(){
+      this.state.ghostGrid = !this.state.ghostGrid;
+      if(this.els.ghostToggle) this.els.ghostToggle.checked = !!this.state.ghostGrid;
+      // Initialize ghost angle on first enable
+      if(this.state.ghostGrid && this.state.ghostAngle === undefined) this.state.ghostAngle = 0;
+      this.log('Ghost grid ' + (this.state.ghostGrid ? 'shown' : 'hidden') + '.', this.state.ghostGrid ? 'good' : 'warn');
+    },
+
+    /**
+     * saveInstructorPreset()
+     *
+     * Save the current instructor settings (challenge and noise toggles) into local
+     * storage under a timestamped key. This allows instructors to recall preset
+     * difficulty configurations in a future release. The stub logs the save.
+     */
+    saveInstructorPreset(){
+      try{
+        const preset = {
+          challenge: !!this.state.challengeMode,
+          noise: !!this.state.chaos,
+          savedAt: new Date().toISOString()
+        };
+        const presets = JSON.parse(localStorage.getItem('phoenix_instructor_presets') || '[]');
+        presets.push(preset);
+        localStorage.setItem('phoenix_instructor_presets', JSON.stringify(presets));
+        this.log('Instructor preset saved.', 'good');
+      }catch(e){
+        this.log('Preset save failed.', 'warn');
+      }
+    },
+
+    /**
+     * renderLogFilters()
+     *
+     * Build chip UI for toggling event categories. Chips reflect the current state
+     * of logFilters and update the state when toggled. Called on init and when
+     * opening the Analysis tab.
+     */
+    renderLogFilters(){
+      const container = this.els.logFilters;
+      if(!container) return;
+      container.innerHTML = '';
+      const cats = Object.keys(this.state.logFilters || {});
+      cats.forEach(cat => {
+        const chip = document.createElement('div');
+        chip.className = 'chip' + (this.state.logFilters[cat] ? ' active' : '');
+        chip.textContent = cat;
+        chip.addEventListener('click', ()=>{
+          this.state.logFilters[cat] = !this.state.logFilters[cat];
+          // rerender chips and logs
+          this.renderLogFilters();
+          this.renderLogs();
+        });
+        container.appendChild(chip);
       });
-      // Scope status element presence
-      lines.push('scopeStatus element present: ' + !!this.els.scopeStatus);
-      return lines.join('\n');
+    },
+
+    /**
+     * toggleReplay()
+     *
+     * Show or hide the replay scrub bar and initialise the replay state. When
+     * entering replay mode, the slider max is set to the number of logs minus one.
+     */
+    toggleReplay(){
+      if(!this.state.logs.length){ this.log('No events to replay.', 'warn'); return; }
+      this.state.replayMode = !this.state.replayMode;
+      if(this.state.replayMode){
+        // Enter replay mode
+        this.state.replayIndex = this.state.logs.length - 1;
+        if(this.els.replayBar) this.els.replayBar.style.display = 'flex';
+        if(this.els.replaySlider){
+          this.els.replaySlider.max = this.state.logs.length - 1;
+          this.els.replaySlider.value = this.state.replayIndex;
+        }
+        if(this.els.replayPlay) this.els.replayPlay.textContent = 'Play';
+        // highlight initial entry
+        this.renderLogs(this.state.replayIndex);
+      } else {
+        // Exit replay mode
+        if(this.els.replayBar) this.els.replayBar.style.display = 'none';
+        clearInterval(this.state.replayTimer);
+        this.state.replayTimer = null;
+        this.renderLogs();
+      }
+    },
+
+    /**
+     * replayStep(dir)
+     *
+     * Move the replay index by a number of steps and update slider and log highlight.
+     * @param {number} dir - delta steps (positive for next, negative for previous)
+     */
+    replayStep(dir){
+      if(!this.state.replayMode) return;
+      const max = this.state.logs.length - 1;
+      let idx = this.state.replayIndex + dir;
+      idx = Math.max(0, Math.min(max, idx));
+      this.state.replayIndex = idx;
+      if(this.els.replaySlider) this.els.replaySlider.value = idx;
+      this.renderLogs(idx);
+    },
+
+    /**
+     * replaySeek(index)
+     *
+     * Set the replay index to a specific log entry; update highlight.
+     */
+    replaySeek(index){
+      if(!this.state.replayMode) return;
+      const max = this.state.logs.length - 1;
+      const idx = Math.max(0, Math.min(max, index));
+      this.state.replayIndex = idx;
+      this.renderLogs(idx);
+    },
+
+    /**
+     * jumpToTrip()
+     *
+     * Jump the replay index to the most recent trip event in the log. If no trip
+     * exists, no action is taken. Only works when replay mode is active.
+     */
+    jumpToTrip(){
+      if(!this.state.replayMode) return;
+      // Find the first log entry with category Trip starting from the beginning (most recent)
+      let target = -1;
+      for(let i=0;i<this.state.logs.length;i++){
+        const e = this.state.logs[i];
+        if(e && e.cat === 'Trip'){ target = i; break; }
+      }
+      if(target >= 0){
+        this.state.replayIndex = target;
+        if(this.els.replaySlider) this.els.replaySlider.value = target;
+        this.renderLogs(target);
+      }
+    },
+
+    /**
+     * updateMissionStrip()
+     *
+     * Populate the mission briefing strip below the header. Displays current
+     * scenario name, objective, time remaining, total score, rank and next
+     * unlock requirement. Called on init, on each UI refresh and when
+     * scenarios or progression update.
+     */
+    updateMissionStrip(){
+      const bar = this.els.missionStrip;
+      if(!bar) return;
+      const items = [];
+      const sc = this.state.scenario;
+      if(sc && sc.active){
+        // Scenario name and objective. Objective is marked low-priority for mobile.
+        items.push(`<div class="item"><strong>SCENARIO</strong> <span class="value">${sc.id.toUpperCase()}</span></div>`);
+        if(sc.objective) items.push(`<div class="item low-priority"><strong>Objective</strong> <span class="value">${sc.objective}</span></div>`);
+        // Time remaining (if maxDurationSec defined)
+        const def = sc.definition || SCENARIOS[sc.id];
+        if(def && def.maxDurationSec){
+          const elapsed = (Date.now() - sc.startTime) / 1000;
+          const remaining = Math.max(0, def.maxDurationSec - elapsed);
+          const m = Math.floor(remaining / 60);
+          const s = Math.floor(remaining % 60);
+          const tStr = `${m}:${s.toString().padStart(2,'0')}`;
+          items.push(`<div class="item"><strong>Time Left</strong> <span class="value">${tStr}</span></div>`);
+        }
+      } else {
+        items.push(`<div class="item"><strong>MODE</strong> <span class="value">Free Run</span></div>`);
+      }
+      // Rank and score (score is low-priority for mobile)
+      items.push(`<div class="item"><strong>Rank</strong> <span class="value">${this.state.rank}</span></div>`);
+      items.push(`<div class="item low-priority"><strong>Total Score</strong> <span class="value">${Math.round(this.state.totalScore)}</span></div>`);
+      // Determine next unlock
+      const unlockOrder = [ {key:'advTelemetry', name:'Advanced Telemetry'}, {key:'rotor', name:'Rotor Visual'}, {key:'playbook', name:'Playbook+'}, {key:'instructor', name:'Instructor'}, {key:'relayLab', name:'Relay Lab'}, {key:'spiceLab', name:'SPICE Lab'} ];
+      let next = null;
+      for(const mod of unlockOrder){
+        if(!this.state.unlocks || !this.state.unlocks[mod.key]){ next = mod.name; break; }
+      }
+      if(next){ items.push(`<div class="item"><strong>Next Unlock</strong> <span class="value">${next}</span></div>`); }
+      bar.innerHTML = items.join('');
+    },
+
+    /**
+     * toggleReplayPlayPause()
+     *
+     * Start or pause the replay auto-advance. When playing, the log index
+     * decrements periodically until the first log entry. Adjusts play button label.
+     */
+    toggleReplayPlayPause(){
+      if(!this.state.replayMode){ this.log('Enter replay mode first.', 'warn'); return; }
+      // If a timer exists, pause replay
+      if(this.state.replayTimer){
+        clearInterval(this.state.replayTimer);
+        this.state.replayTimer = null;
+        if(this.els.replayPlay) this.els.replayPlay.textContent = 'Play';
+        return;
+      }
+      // Otherwise start auto replay from current index towards the beginning
+      if(this.els.replayPlay) this.els.replayPlay.textContent = 'Pause';
+      this.state.replayTimer = setInterval(() => {
+        if(this.state.replayIndex > 0){
+          this.replayStep(-1);
+        } else {
+          clearInterval(this.state.replayTimer);
+          this.state.replayTimer = null;
+          if(this.els.replayPlay) this.els.replayPlay.textContent = 'Play';
+        }
+      }, 300);
+    },
+
+    /**
+     * toggleChallengeMode()
+     *
+     * Programmatically toggle challenge mode. This method simply flips the
+     * challengeMode flag and logs the event. Use handleChallengeCheckbox() to
+     * respond to UI changes.
+     */
+    toggleChallengeMode(){
+      this.state.challengeMode = !this.state.challengeMode;
+      const chk = this.els.challengeToggle;
+      if(chk) chk.checked = this.state.challengeMode;
+      this.log('Challenge mode ' + (this.state.challengeMode ? 'enabled' : 'disabled') + '. Sync thresholds tightened.', this.state.challengeMode ? 'warn' : 'good');
+    },
+
+    /**
+     * handleChallengeCheckbox()
+     *
+     * Sync challenge mode with the instructor checkbox. When the user toggles
+     * the challenge checkbox this updates the underlying state and logs the
+     * change. Use this as an event handler.
+     */
+    handleChallengeCheckbox(){
+      const chk = this.els.challengeToggle;
+      const enabled = chk && chk.checked;
+      this.state.challengeMode = !!enabled;
+      this.log('Challenge mode ' + (enabled ? 'enabled' : 'disabled') + '. Sync thresholds tightened.', enabled ? 'warn' : 'good');
+    },
+
+    /**
+     * handleNoiseCheckbox()
+     *
+     * Sync chaos/distraction mode with the instructor checkbox. This updates
+     * the existing chaos flag and updates the main chaos toggle button label.
+     */
+    handleNoiseCheckbox(){
+      const chk = this.els.noiseToggle;
+      const enabled = chk && chk.checked;
+      this.state.chaos = !!enabled;
+      const btn = document.getElementById('btnChaos');
+      if(btn) btn.textContent = this.state.chaos ? 'CHAOS ON' : 'CHAOS OFF';
+      this.log('Chaos/distraction mode ' + (enabled ? 'enabled' : 'disabled') + '.', enabled ? 'warn' : 'good');
     },
 
     dispatch(event){
@@ -1012,11 +2376,45 @@
     },
 
     vibrate(pattern){ try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){} },
-    log(msg, level=''){ const now = new Date(); const ts = now.toLocaleTimeString('en-US',{hour12:false}) + '.' + String(now.getMilliseconds()).padStart(3,'0'); const entry = {ts,msg,level}; this.state.logs.unshift(entry); this.renderLogs(); },
+    /**
+     * Unified logging function that tags events with a category used for analysis filtering.
+     * Category is derived heuristically based on level and message content.
+     * Categories: Operator, State, Fault, Trip, Scenario, Telemetry.
+     */
+    log(msg, level=''){
+      const now = new Date();
+      const ts = now.toLocaleTimeString('en-US',{hour12:false}) + '.' + String(now.getMilliseconds()).padStart(3,'0');
+      let cat = 'Operator';
+      const lc = (level || '').toLowerCase();
+      const upperMsg = msg.toUpperCase();
+      if(lc.includes('fault') || upperMsg.includes('FAULT')) cat = 'Fault';
+      else if(lc === 'trip' || upperMsg.includes('TRIP')) cat = 'Trip';
+      else if(lc === 'scenario' || upperMsg.includes('SCENARIO')) cat = 'Scenario';
+      else if(upperMsg.startsWith('STATE')) cat = 'State';
+      else if(lc === 'telemetry' || upperMsg.includes('HZ') || upperMsg.includes('KV')) cat = 'Telemetry';
+      if(lc === 'closecmd') cat = 'Operator';
+      const entry = { ts, msg, level, cat };
+      this.state.logs.unshift(entry);
+      this.renderLogs();
+    },
 
     renderLogs(highlight){
-      const box = this.els.log; box.innerHTML='';
-      this.state.logs.slice(0,300).forEach((e, i)=>{ const div=document.createElement('div'); div.className='log-entry ' + (e.level||''); if(highlight===i) div.style.outline='1px solid var(--cyan)'; div.textContent = '['+e.ts+'] ' + e.msg; box.appendChild(div); });
+      // Render up to 300 log entries, applying category filters and highlighting a specific index.
+      const box = this.els.log;
+      if(!box) return;
+      box.innerHTML = '';
+      const logs = this.state.logs;
+      for(let i=0; i<logs.length && i<300; i++){
+        const e = logs[i];
+        // Skip if category filter disabled
+        if(this.state.logFilters && !this.state.logFilters[e.cat]) continue;
+        const div = document.createElement('div');
+        div.className = 'log-entry ' + (e.level || '');
+        if(highlight === i) div.style.outline = '1px solid var(--cyan)';
+        div.textContent = '[' + e.ts + '] ' + e.msg;
+        div.dataset.idx = i;
+        box.appendChild(div);
+      }
     },
 
     startSim(){ if(this.state.machine.mode !== MODE.OFFLINE) return; this.dispatch(EVENT.SIM_START); this.log('Simulation started.', 'good'); this.vibrate(12); },
@@ -1041,7 +2439,15 @@
       else this.log('Generator stop command issued.', 'warn');
     },
     togglePause(){ this.dispatch(EVENT.PAUSE_TOGGLE); this.log(this.state.machine.mode === MODE.PAUSED ? 'Simulation paused.' : 'Simulation resumed.', 'warn'); },
-    toggleChaos(){ this.state.chaos = !this.state.chaos; document.getElementById('btnChaos').textContent = this.state.chaos ? 'CHAOS ON' : 'CHAOS OFF'; this.log('Grid chaos ' + (this.state.chaos ? 'enabled' : 'disabled') + '.', this.state.chaos ? 'warn':'good'); },
+    // Duplicate toggleChaos removed; unified implementation below keeps noise toggle and button in sync
+    toggleChaos(){
+      this.state.chaos = !this.state.chaos;
+      const btn = document.getElementById('btnChaos');
+      if(btn) btn.textContent = this.state.chaos ? 'CHAOS ON' : 'CHAOS OFF';
+      // Keep instructor noise checkbox in sync
+      if(this.els.noiseToggle) this.els.noiseToggle.checked = this.state.chaos;
+      this.log('Grid chaos ' + (this.state.chaos ? 'enabled' : 'disabled') + '.', this.state.chaos ? 'warn' : 'good');
+    },
     toggleAutoMatch(){ this.state.autoMatch = !this.state.autoMatch; const txt = this.state.autoMatch ? 'AUTO MATCH ON' : 'AUTO MATCH'; document.getElementById('btnAutoMatch').textContent = txt; const dock = document.getElementById('btnAutoMatchDock'); if(dock) dock.textContent = txt; this.log('Auto-match ' + (this.state.autoMatch ? 'enabled' : 'disabled') + '.', this.state.autoMatch ? 'good':'warn'); },
     raiseLoad(){ this.state.loadDemandKW = this.clamp(this.state.loadDemandKW + 350, 1800, 9000); this.log('Load request raised to ' + Math.round(this.state.loadDemandKW) + ' kW.', 'good'); },
 
@@ -1069,6 +2475,10 @@
       this.state.lastTripReason = '';
       this.log('Full system reset.', 'warn');
       this.updateUI();
+
+      // Ensure instructor toggles reflect restored state after reset
+      if(this.els.challengeToggle) this.els.challengeToggle.checked = !!this.state.challengeMode;
+      if(this.els.noiseToggle) this.els.noiseToggle.checked = !!this.state.chaos;
     },
 
     /**
@@ -1152,19 +2562,55 @@
       this.log('Breaker reset to OPEN.', 'good');
     },
     toggleBreakerCommand(){
-      if(this.state.breaker === 'TRIPPED'){ this.log('Close blocked. Breaker is tripped.', 'warn'); return; }
-      if(this.state.breaker === 'CLOSED'){ this.state.breaker = 'OPEN'; this.dispatch(EVENT.BREAKER_OPEN_CMD); this.log('Breaker opened by operator.', 'warn'); this.vibrate(12); return; }
-      if(this.state.faults.has('BRKR-STUCK')){ this.log('Breaker close failed. Breaker stuck fault active.', 'trip'); this.vibrate([120,50,120]); return; }
-      const ctx = this.deriveContext();
-      if(!ctx.syncSafe){ this.tripBreaker(`Unsafe sync attempt. ΔV ${ctx.dv.toFixed(0)} V, Δf ${ctx.df.toFixed(3)} Hz, Δφ ${ctx.dphi.toFixed(1)}°`); return; }
-      if(this.state.machine.mode !== MODE.SYNC_WINDOW){ this.log('Close blocked. Not in sync window.', 'warn'); return; }
+      if(this.state.breaker === 'TRIPPED'){
+        this.log('Close blocked. Breaker is tripped.', 'warn');
+        return;
+      }
+      if(this.state.breaker === 'CLOSED'){
+        this.state.breaker = 'OPEN';
+        this.dispatch(EVENT.BREAKER_OPEN_CMD);
+        this.log('Breaker opened by operator.', 'warn');
+        this.vibrate(12);
+        return;
+      }
+      if(this.state.faults.has('BRKR-STUCK')){
+        this.log('Breaker close failed. Breaker stuck fault active.', 'trip');
+        this.vibrate([120,50,120]);
+        return;
+      }
+      // Use unified eligibility helper for close gating
+      const elig = this.getCloseEligibility();
+      // If cannot close, determine whether this is an unsafe attempt or simply blocked due to dwell
+      if(!elig.canClose){
+        if(!elig.instantSafe){
+          // Unsafe mismatches cause a trip
+          if(this.state.scenario && this.state.scenario.active){
+            this.state.scenario.mistakes.push('Unsafe sync attempt caused trip');
+          }
+          this.tripBreaker(`Unsafe sync attempt. ΔV ${elig.ctx.dv.toFixed(0)} V, Δf ${elig.ctx.df.toFixed(3)} Hz, Δφ ${elig.ctx.dphi.toFixed(1)}°`);
+          return;
+        } else {
+          // All mismatches satisfied but dwell not yet met or scenario does not allow early closing
+          this.log('Close blocked. Not in sync window.', 'warn');
+          if(this.state.scenario && this.state.scenario.active){
+            this.state.scenario.unsafeAttempts++;
+            this.state.scenario.mistakes.push('Attempted breaker close outside sync window');
+          }
+          return;
+        }
+      }
+      // All clear: close command
       this.dispatch(EVENT.BREAKER_CLOSE_CMD);
       // record marker for operator close command
       this.recordMarker('close_cmd');
       this.state.brkrClosingTimer = 0.12;
       this.state.postCloseHold = 1.2;
+      // Record closure metrics for scorecard
+      if(this.state.scenario && this.state.scenario.active){
+        this.state.scenario.closures.push({ dv: elig.ctx.dv, df: elig.ctx.df, dphi: elig.ctx.dphi, current: this.state.currentA });
+      }
       // log close command with its own level
-      this.log('Breaker close issued in sync window.', 'closecmd');
+      this.log('Breaker close issued.', 'closecmd');
       this.vibrate([18,30,18]);
     },
     tripBreaker(reason){
@@ -1196,6 +2642,11 @@
         // Increment trip and unsafe counters, then record failure reason before ending
         this.state.scenario.trips++;
         this.state.scenario.unsafeAttempts++;
+        // Record trip event with context for scorecard and replay
+        const snap = this.state.tripSnapshot;
+        if(!this.state.scenario.tripEvents) this.state.scenario.tripEvents = [];
+        this.state.scenario.tripEvents.push({ dv: snap.dv, df: snap.df, dphi: snap.dphi, current: snap.current, faults: Array.from(snap.faults || []), reason });
+        this.state.scenario.mistakes.push('Trip occurred: ' + reason);
         // On any protective trip during a scenario, the end reason should be recorded as a trip
         this.state.scenario.scenarioEndReason = 'trip';
         this.endScenario(false);
@@ -1324,7 +2775,7 @@
       // Fault-specific guidance
       if(faultsArr.includes('V-SAG')) hints.push('Raise generator voltage above 13.0 kV to clear V‑SAG');
       if(faultsArr.includes('F-SURGE')) hints.push('Reduce frequency surge; trim governor setpoint toward 60 Hz');
-      if(faultsArr.includes('PHASE-ERR')) hints.push('Align phase; wait for slip to settle and adjust frequency');
+      if(faultsArr.includes('PHASE-ERR')) hints.push('Reduce slip: trim frequency until phase drift slows; there is no direct phase control');
       if(faultsArr.includes('OVERCURRENT')) hints.push('Lower load and stabilize generator speed/droop to keep current below 1400 A');
       if(faultsArr.includes('BRKR-STUCK')) hints.push('Clear the BRKR‑STUCK fault and reset breaker');
       // Scenario-specific guidance
@@ -1333,14 +2784,19 @@
         switch(scenarioId){
           case 'quickstart': hints.push('Follow the quickstart drill sequence and tune voltage/frequency carefully'); break;
           case 'vsag': hints.push('Focus on maintaining generator voltage within safe band'); break;
-          case 'phaseerr': hints.push('Prioritize frequency and angle alignment'); break;
+          case 'phaseerr': hints.push('Trim generator frequency to reduce slip; let the angle settle before closing'); break;
           case 'overcurrent': hints.push('Monitor load demand and current to avoid trip'); break;
           case 'stuck': hints.push('Practice clearing the stuck breaker fault before closing'); break;
           case 'combined': hints.push('Manage voltage and phase faults simultaneously'); break;
         }
       }
-      // General safe-sync guidance
-      hints.push('Ensure ΔV < 500 V, Δf < 0.03 Hz and Δφ < 5° before closing');
+      // General safe-sync guidance with dynamic thresholds
+      {
+        const dvLimit = this.state.challengeMode ? 300 : 500;
+        const dfLimit = this.state.challengeMode ? 0.02 : 0.03;
+        const dphiLimit = this.state.challengeMode ? 3 : 5;
+        hints.push(`Ensure ΔV < ${dvLimit} V, Δf < ${dfLimit.toFixed(3)} Hz and Δφ < ${dphiLimit}° before closing`);
+      }
       hints.push('Reset breaker and clear faults, then attempt safe sync again');
       return hints.join('; ');
     },
@@ -1387,9 +2843,13 @@
         // Otherwise fall through and evaluate sync conditions normally
       }
       if (!ctx.syncSafe) {
-        if (ctx.dv >= 500) return 'ΔV too high — trim voltage';
-        if (ctx.df >= 0.03) return 'Δf too high — trim speed';
-        if (ctx.dphi >= 5) return 'Δφ too high — wait for angle';
+        // Dynamic sync thresholds under challenge mode
+        const dvLimit = this.state.challengeMode ? 300 : 500;
+        const dfLimit = this.state.challengeMode ? 0.02 : 0.03;
+        const dphiLimit = this.state.challengeMode ? 3 : 5;
+        if (ctx.dv >= dvLimit) return `ΔV too high — trim voltage (limit ${dvLimit} V)`;
+        if (ctx.df >= dfLimit) return `Δf too high — trim speed (limit ${dfLimit.toFixed(3)} Hz)`;
+        if (ctx.dphi >= dphiLimit) return `Δφ too high — wait for angle (limit ${dphiLimit}°)`;
         return 'Sync conditions not met';
       }
       if (s.machine.mode !== MODE.SYNC_WINDOW) return 'Not yet in sync window';
@@ -1408,18 +2868,23 @@
       const sc = this.state.scenario;
       if (!sc || !sc.active) return '';
       switch (sc.id) {
-        case 'quickstart':
-          return 'Maintain ΔV < 500 V, Δf < 0.03 Hz and Δφ < 5° to enter sync window';
+        case 'quickstart': {
+          // Compute dynamic limits for clean sync scenarios
+          const dvLimit = this.state.challengeMode ? 300 : 500;
+          const dfLimit = this.state.challengeMode ? 0.02 : 0.03;
+          const dphiLimit = this.state.challengeMode ? 3 : 5;
+          return `Maintain ΔV < ${dvLimit} V, Δf < ${dfLimit.toFixed(3)} Hz and Δφ < ${dphiLimit}° to enter sync window`;
+        }
         case 'vsag':
           return 'Raise generator voltage above 13.0 kV before closing';
         case 'phaseerr':
-          return 'Phase angle must be less than 3° before closing';
+          return 'Reduce slip via frequency control; hold slip low and close as angle passes 0°';
         case 'overcurrent':
           return 'After injection, keep current below 1400 A for 3.0 s to pass';
         case 'stuck':
           return 'Clear BRKR‑STUCK fault before closure';
         case 'combined':
-          return 'Achieve generator voltage > 13.0 kV and phase < 4° simultaneously';
+          return 'Use AVR to restore generator voltage, trim governor to reduce slip, and close only when ΔV, Δf, and Δφ are inside limits';
         default:
           return '';
       }
@@ -1458,8 +2923,16 @@
         case MODE.GEN_STARTING:
           return 'Generator starting. Monitor voltage and frequency as it comes online.';
         case MODE.GEN_READY:
+          // If the phase‑error scenario is active, emphasise slip reduction and indirect phase control
+          if (s.scenario && s.scenario.active && s.scenario.id === 'phaseerr') {
+            return 'Reduce slip via governor control; there is no direct phase knob. Slow the drift and wait for the needle to approach 12 o’clock.';
+          }
           return 'Align voltage, frequency and phase. Use governor/AVR or AUTO MATCH to enter sync window.';
         case MODE.SYNC_WINDOW:
+          // Phase‑error requires a slightly different emphasis: no dwell hold and timing on the pass
+          if (s.scenario && s.scenario.active && s.scenario.id === 'phaseerr') {
+            return 'Instant safe mismatch achieved. Hold speed steady and close as the needle crosses 12 o’clock.';
+          }
           return 'Safe sync band achieved (ΔV < 500 V, Δf < 0.03 Hz, Δφ < 5°). Align at 12 o’clock and close breaker.';
         case MODE.BREAKER_CLOSING:
           return 'Breaker closing… maintain alignment until closure.';
@@ -1481,15 +2954,16 @@
       const btn = document.getElementById('btnToggleBreaker');
       const dockBtn = document.getElementById('btnToggleBreakerDock');
       if (!btn) return;
+      // Determine breaker button label and state via unified eligibility helper.  This ensures
+      // the UI reflects the same logic used by the close command and sync pill.
       let label = 'TOGGLE BRKR';
-      // Determine breaker button label based on current machine and breaker state
-      // Tripped breaker gets a reset label
+      // Tripped breakers can always be reset
       if (this.state.breaker === 'TRIPPED') {
         label = 'RESET BREAKER';
         btn.disabled = false;
       }
-      // While physically closing, show closing status and disable button
-      else if (this.state.machine.mode === MODE.BREAKER_CLOSING) {
+      // During physical closing, show status and disable
+      else if (this.state.machine && this.state.machine.mode === MODE.BREAKER_CLOSING) {
         label = 'CLOSING…';
         btn.disabled = true;
       }
@@ -1498,15 +2972,15 @@
         label = 'OPEN BREAKER';
         btn.disabled = false;
       }
-      // Ready to close during sync window
-      else if (this.state.machine.mode === MODE.SYNC_WINDOW) {
-        label = 'CLOSE BREAKER';
-        btn.disabled = false;
-      }
-      // In all other cases, closing is blocked
       else {
-        label = 'CLOSE BLOCKED';
-        btn.disabled = true;
+        const elig = this.getCloseEligibility();
+        if (elig.canClose) {
+          label = 'CLOSE BREAKER';
+          btn.disabled = false;
+        } else {
+          label = 'CLOSE BLOCKED';
+          btn.disabled = true;
+        }
       }
       btn.textContent = label;
       if (dockBtn) {
@@ -1538,6 +3012,11 @@
         ,
         // Reason for scenario termination: success, timeout, or trip. Initially null.
         scenarioEndReason: null
+        ,
+        // Horizon additions for scorecard
+        closures: [],
+        tripEvents: [],
+        mistakes: []
     };
       this.log(`SCENARIO STARTED: ${id.toUpperCase()} — ${def.objective}`, 'good');
       // Provide tactile feedback to indicate scenario start
@@ -1587,7 +3066,47 @@
       else if (reason === 'timeout') resultStr = 'FAILED — TIMEOUT';
       else if (reason === 'trip') resultStr = 'FAILED — TRIP';
       else resultStr = 'FAILED';
-      // Assemble debrief HTML with explicit result line
+      // Compose a scorecard with breakdown and mistakes. Evaluate closure quality and
+      // unsafe attempts/trips. This does not alter scoring but provides a deeper
+      // reflection on operator performance.
+      const scState = this.state.scenario;
+      const closures = Array.isArray(scState.closures) ? scState.closures : [];
+      let safeCount = 0, qualitySum = 0;
+      closures.forEach(cl => {
+        // Convert dv to volts before comparison. df is already in Hz, dp in degrees.
+        const dv = Math.abs(cl.dv) * 1000;
+        const df = Math.abs(cl.df);
+        const dp = Math.abs(cl.dphi);
+        const safe = dv < 500 && df < 0.03 && dp < 5;
+        if(safe) safeCount++;
+        const q = 1 - Math.min(1, (dv/500 + df/0.03 + dp/5) / 3);
+        qualitySum += q;
+      });
+      const totalClosures = closures.length;
+      const avgQuality = totalClosures ? qualitySum / totalClosures : 0;
+      const qualityPct = Math.round(avgQuality * 100);
+      const safePct = totalClosures ? Math.round((safeCount/totalClosures) * 100) : 0;
+      const unsafeAttempts = scState.unsafeAttempts;
+      const trips = scState.trips;
+      const mistakes = scState.mistakes || [];
+      let scorecardHTML = '<div style="margin-top:8px"><strong>Score Breakdown:</strong><ul style="margin:4px 0 8px 18px;font-size:12px;line-height:1.4">';
+      scorecardHTML += `<li>Safe syncs: ${safeCount} of ${totalClosures} (${safePct}%)</li>`;
+      scorecardHTML += `<li>Avg sync quality: ${qualityPct}%</li>`;
+      scorecardHTML += `<li>Unsafe attempts: ${unsafeAttempts}</li>`;
+      scorecardHTML += `<li>Trips: ${trips}</li>`;
+      scorecardHTML += '</ul></div>';
+      if(mistakes.length){
+        scorecardHTML += '<div style="margin-top:4px"><strong>Mistakes & Guidance:</strong><ul style="margin:4px 0 8px 18px;font-size:12px;line-height:1.4">';
+        mistakes.forEach(msg => {
+          let hint = '';
+          if(/unsafe/i.test(msg)) hint = 'Wait for voltage, frequency and phase to stabilise within safe bands and ensure no faults before closing.';
+          else if(/trip/i.test(msg)) hint = 'Review trip summary for conditions and adjust controls or clear faults before retrying.';
+          else if(/outside sync window/i.test(msg)) hint = 'Only attempt closure when the sync ready indicator is green.';
+          scorecardHTML += `<li>${msg}${hint ? ' — ' + hint : ''}</li>`;
+        });
+        scorecardHTML += '</ul></div>';
+      }
+      // Assemble debrief HTML with explicit result line and appended scorecard
       const debriefHTML = `
         <strong>Scenario: ${this.state.scenario.id.toUpperCase()}</strong><br>
         <strong>RESULT: ${resultStr}</strong><br>
@@ -1596,6 +3115,7 @@
         Unsafe attempts: ${this.state.scenario.unsafeAttempts}<br>
         Trips: ${this.state.scenario.trips}<br>
         <span style="color:var(--green);font-weight:700">FINAL SCORE: ${Math.round(this.state.scenario.score)} / 120</span><br>
+        ${scorecardHTML}
         ${scenarioContent}
       `;
       document.getElementById('debriefContent').innerHTML = debriefHTML;
@@ -1613,6 +3133,8 @@
       }
       this.state.scenario.active = false;
       this.updateTrainingModeBadge();
+      // Update progression and unlocks after scenario completion
+      this.updateProgressionAfterScenario();
     },
 
     /**
@@ -1655,6 +3177,19 @@
       if(s.chaos && s.gridStarted){
         s.gridF += (Math.random() - 0.5) * 0.01;
         s.gridV += (Math.random() - 0.5) * 0.025;
+      }
+
+      // Advance ghost grid angle when the ghost grid overlay is enabled. The ghost grid
+      // represents a simulated net frequency from the telemetry overlay and does not
+      // influence physics. We integrate the difference between the ghost frequency
+      // (telemetryFreq) and the actual grid frequency to obtain a slip angle. This
+      // angle is used in drawScope() to render the second needle. Initialise the
+      // ghostAngle if needed on first tick.
+      if(this.state.ghostGrid){
+        if(this.state.ghostAngle === undefined) this.state.ghostAngle = 0;
+        // Integrate frequency difference (Hz) into degrees. 1 Hz difference yields 360 deg/sec.
+        const slipHz = (this.state.telemetryFreq || 60) - s.gridF;
+        this.state.ghostAngle += slipHz * 360 * dt;
       }
 
       if(s.faults.has('V-SAG')) s.gridV = Math.max(12.1, s.gridV - dt * 0.35);
@@ -1797,8 +3332,16 @@
         }
       }
         // Protection trip on excessive mismatch or sustained overcurrent after post‑close hold expires. Use actual mismatch values here, not UI‑normalized.
-        if(s.postCloseHold <= 0 && (Math.abs(dV) * 1000 > 1000 || Math.abs(dF) > 0.2 || s.currentA > 1500)){
-          this.tripBreaker(`Protection trip. ΔV ${(Math.abs(dV) * 1000).toFixed(0)} V, Δf ${Math.abs(dF).toFixed(3)} Hz, I ${s.currentA.toFixed(0)} A`);
+        {
+          // Apply trip thresholds dynamically depending on challenge mode. When
+          // challengeMode is enabled, voltage and frequency trip limits are
+          // tightened and current threshold lowered.
+          const dvTrip = this.state.challengeMode ? 800 : 1000;
+          const dfTrip = this.state.challengeMode ? 0.15 : 0.2;
+          const iaTrip = this.state.challengeMode ? 1300 : 1500;
+          if(s.postCloseHold <= 0 && (Math.abs(dV) * 1000 > dvTrip || Math.abs(dF) > dfTrip || s.currentA > iaTrip)){
+            this.tripBreaker(`Protection trip. ΔV ${(Math.abs(dV) * 1000).toFixed(0)} V, Δf ${Math.abs(dF).toFixed(3)} Hz, I ${s.currentA.toFixed(0)} A`);
+          }
         }
       } else {
         s.currentA += (0 - s.currentA) * dt * 3;
@@ -1846,40 +3389,141 @@
       this.els.powerBrief.textContent = Math.round(s.pKW) + ' kW';
       this.els.currentSub.textContent = s.currentA.toFixed(0) + ' A · PF ' + s.pf.toFixed(2);
 
-      // Actual mismatches used for sync readiness and protection gating. Do not normalize these values.
+      // Actual mismatches for physics / protection
       const absDV = Math.abs(s.genV - s.gridV) * 1000;
-      const absDf = Math.abs(s.slipHz);
-      const absDp = Math.abs(this.wrapDeg(s.phaseDeg));
-      // Use normalized slip/phase for UI display; absolute differences for dv/hz/deg shown accordingly.
+      const absDf = s.breaker === 'CLOSED' ? 0 : Math.abs(s.slipHz);
+      const absDp = s.breaker === 'CLOSED' ? 0 : Math.abs(this.wrapDeg(s.phaseDeg));
       this.els.kvSlip.textContent = displaySlipHz.toFixed(3) + ' Hz';
       this.els.kvPhase.textContent = displayPhaseDeg.toFixed(1) + '°';
       this.els.kvQ.textContent = s.qMVAr.toFixed(2) + ' MVAr';
       this.els.kvS.textContent = Math.round(s.sKVA) + ' kVA';
       this.els.kvDV.textContent = absDV.toFixed(0) + ' V';
-      this.els.kvDfAbs.textContent = displayAbsDf.toFixed(3) + ' Hz';
-      this.els.kvDpAbs.textContent = displayAbsDp.toFixed(1) + '°';
+      this.els.kvDfAbs.textContent = absDf.toFixed(3) + ' Hz';
+      this.els.kvDpAbs.textContent = absDp.toFixed(1) + '°';
       this.els.kvTemp.textContent = s.genTempC.toFixed(1) + ' °C';
+
+      // Compute a composite stress metric based on voltage, frequency, phase and current mismatches.
+      // Each component is normalised by its trip limit. Values are clamped to [0,1].
+      const dvBaseLimit = this.state.challengeMode ? 800 : 1000;
+      const dfBaseLimit = this.state.challengeMode ? 0.15 : 0.20;
+      const dpBaseLimit = 20;
+      const currentBaseLimit = this.state.challengeMode ? 1300 : 1500;
+      const tempBaseLow = 60;
+      const tempBaseHigh = 105;
+
+     /*
+       * Electrical mismatch stress:
+       * - ΔV matters most near close and during bad parallel conditions
+       * - Δf maps to torque pulsation / synchronizing strain
+       * - Δφ maps to torque shock / out-of-phase coupling risk
+       */
+      const dvRatio = this.clamp(absDV / dvBaseLimit, 0, 1);
+      const dfRatio = this.clamp(absDf / dfBaseLimit, 0, 1);
+      const dpRatio = this.clamp(absDp / dpBaseLimit, 0, 1);
+
+/*
+ * Loaded-machine stress:
+ * - current is the clearest direct proxy for stator heating and electromagnetic loading
+ * - temperature is a slower accumulated penalty, not the primary driver
+ */
+      const currentRatio = this.clamp(s.currentA / currentBaseLimit, 0, 1);
+      const tempRatio = this.clamp((s.genTempC - tempBaseLow) / (tempBaseHigh - tempBaseLow), 0, 1);
+
+/*
+ * Mechanical stress:
+ * - droop error under load acts as a rough prime-mover strain indicator
+ * - slip while open reflects synchronizing chase / hunting stress
+ */
+     const mechDroopRatio = this.clamp(Math.abs(s.governorDroopHz || 0) / 0.065, 0, 1);
+     const openSlipRatio = this.clamp(Math.abs(s.slipHz || 0) / 0.20, 0, 1);
+
+/*
+ * Weighting:
+ * OPEN breaker:
+ *   emphasize mismatch and synchronizing chase
+ * CLOSED breaker:
+ *   emphasize current, temperature, and governor droop
+ */
+let stress;
+if (s.breaker === 'CLOSED') {
+  stress =
+    dvRatio * 0.14 +
+    dfRatio * 0.12 +
+    dpRatio * 0.10 +
+    currentRatio * 0.34 +
+    tempRatio * 0.16 +
+    mechDroopRatio * 0.14;
+} else {
+  stress =
+    dvRatio * 0.28 +
+    dfRatio * 0.24 +
+    dpRatio * 0.22 +
+    currentRatio * 0.08 +
+    tempRatio * 0.04 +
+    openSlipRatio * 0.14;
+}
+
+stress = this.clamp(stress, 0, 1);
+      if(this.els.stressBrief){
+        const percent = Math.round(stress * 100);
+        // Determine qualitative descriptor
+        let severity = 'Low';
+        if(stress >= 0.75) severity = 'Extreme';
+        else if(stress >= 0.5) severity = 'High';
+        else if(stress >= 0.25) severity = 'Moderate';
+        // Update display text
+        this.els.stressBrief.textContent = percent + '%';
+        this.els.stressSub.textContent = severity;
+        // Colour shift from green (120°) to red (0°) based on stress
+        const hue = 120 - 120 * stress;
+        const color = `hsl(${hue}, 100%, 60%)`;
+        this.els.stressBrief.style.color = color;
+        // Update bar fill width and colour
+        if(this.els.stressBarFill){
+          this.els.stressBarFill.style.width = (percent) + '%';
+          this.els.stressBarFill.style.backgroundColor = color;
+        }
+      }
+      // Persist last stress ratio for rotor and mission strip
+      this.state.stressRatio = stress;
 
       this.els.gridStateText.textContent = s.gridHealthy ? 'GRID HEALTHY' : (s.gridStarted ? 'WARMING UP' : 'DE-ENERGIZED'); this.els.gridStateText.className = s.gridHealthy ? 'status-online' : 'status-offline';
       this.els.genStateText.textContent = s.genStarted ? 'GEN ONLINE' : 'OFFLINE'; this.els.genStateText.className = s.genStarted ? 'status-online' : 'status-offline';
       this.els.breakerInline.textContent = '[ ' + s.breaker + ' ]'; this.els.breakerInline.className = s.breaker==='CLOSED'?'status-online':s.breaker==='TRIPPED'?'status-trip':'status-open';
 
-      let ready = false, reason = 'Waiting for grid/gen';
-      if(s.breaker === 'TRIPPED'){ reason = 'Breaker tripped'; }
-      else if(!s.gridHealthy){ reason = 'Grid not healthy'; }
-      else if(!s.genStarted){ reason = 'Generator offline'; }
-      else {
-        const dvOk = absDV < 500, dfOk = absDf < 0.03, dpOk = absDp < 5;
-        ready = dvOk && dfOk && dpOk;
-        reason = ready ? 'Within sync window' : `${dvOk?'ΔV OK':'Trim voltage'} · ${dfOk?'Δf OK':'Trim speed'} · ${dpOk?'Δφ OK':'Wait angle'}`;
+      // Use unified close‑eligibility helper to derive sync status and reason
+      const elig = this.getCloseEligibility();
+      // Determine pill text and state based on breaker status and eligibility
+      let pillText = '';
+      let pillClass = '';
+      let reason = '';
+      if(s.breaker === 'CLOSED'){
+        pillText = 'SYNCED';
+        pillClass = 'ready';
+        reason = `Online · load ${Math.round(s.loadDemandKW)} kW · temp ${s.genTempC.toFixed(1)} °C`;
+      } else if(s.breaker === 'TRIPPED'){
+        pillText = 'TRIPPED';
+        pillClass = 'trip';
+        reason = elig.reasonText;
+      } else {
+        if(elig.canClose){
+          pillText = 'SYNC READY';
+          pillClass = 'ready';
+        } else {
+          pillText = 'NOT READY';
+          pillClass = 'wait';
+        }
+        reason = elig.reasonText;
       }
-      this.els.syncReadyPill.textContent = s.breaker==='CLOSED' ? 'SYNCED' : ready ? 'SYNC READY' : (s.breaker==='TRIPPED' ? 'TRIPPED' : 'NOT READY');
-      this.els.syncReadyPill.className = 'sync-pill ' + (s.breaker==='CLOSED' || ready ? 'ready' : s.breaker==='TRIPPED' ? 'trip' : 'wait');
-      this.els.syncReason.textContent = s.breaker==='CLOSED' ? `Online · load ${Math.round(s.loadDemandKW)} kW · temp ${s.genTempC.toFixed(1)} °C` : reason;
+      this.els.syncReadyPill.textContent = pillText;
+      this.els.syncReadyPill.className = 'sync-pill ' + pillClass;
+      this.els.syncReason.textContent = reason;
 
       const markerPct = this.clamp(50 + this.wrapDeg(s.phaseDeg) / 90 * 50, 0, 100);
       this.els.syncBandMarker.style.left = `calc(${markerPct}% - 1px)`;
-      this.els.syncLamp.className = 'lamp' + ((ready || s.breaker==='CLOSED') ? ' ready' : '');
+      // Lamp glows when the instantaneous mismatch is within safe thresholds or when breaker is closed
+      const lampReady = (s.breaker === 'CLOSED') || elig.instantSafe;
+      this.els.syncLamp.className = 'lamp' + (lampReady ? ' ready' : '');
 
       const flowing = s.breaker==='CLOSED';
       this.els.leftFlow.style.display = flowing ? 'block':'none';
@@ -1926,6 +3570,8 @@
       this.updateTrainingModeBadge();
       // Update the scenario state readout on each UI refresh
       this.updateScenarioStatePanel();
+      // Update mission briefing strip with current scenario info, rank and unlocks
+      if(typeof this.updateMissionStrip === 'function') this.updateMissionStrip();
     },
 
     drawScope(){
@@ -1939,10 +3585,37 @@
       ctx.strokeStyle = `rgba(49,210,138,${0.15 + syncGlow*0.55})`; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(cx,cy,r-2,(-110)*Math.PI/180,(-70)*Math.PI/180); ctx.stroke();
       for(let i=0;i<12;i++){ const a=(-90 + i*30)*Math.PI/180; const x1=cx+Math.cos(a)*(r-8), y1=cy+Math.sin(a)*(r-8), x2=cx+Math.cos(a)*(r+8), y2=cy+Math.sin(a)*(r+8); ctx.strokeStyle=i===0?'#ff6b6b':'#4f6f96'; ctx.lineWidth=i===0?4:2; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
       ctx.fillStyle='#96a6bc'; ctx.font='12px sans-serif'; ctx.textAlign='center'; ctx.fillText('12', cx, cy-r-18); ctx.fillText('SLOW', cx-r-24, cy+4); ctx.fillText('FAST', cx+r+24, cy+4);
-      const p = this.wrapDeg(this.state.phaseDeg); const angle = (p - 90) * Math.PI/180; ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle); ctx.strokeStyle='#59d7ff'; ctx.shadowBlur=18; ctx.shadowColor='rgba(89,215,255,.9)'; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(-18,0); ctx.lineTo(r-16,0); ctx.stroke(); ctx.restore();
+      const p = this.state.breaker === 'CLOSED' ? 0 : this.wrapDeg(this.state.phaseDeg); const angle = (p - 90) * Math.PI/180; ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle); ctx.strokeStyle='#59d7ff'; ctx.shadowBlur=18; ctx.shadowColor='rgba(89,215,255,.9)'; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(-18,0); ctx.lineTo(r-16,0); ctx.stroke(); ctx.restore();
       ctx.fillStyle='#dce9f8'; ctx.beginPath(); ctx.arc(cx,cy,9,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#09111b'; ctx.beginPath(); ctx.arc(cx,cy,3,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#dce9f8'; ctx.font='800 16px sans-serif'; ctx.fillText(`${Math.abs(p).toFixed(1)}°`, cx, cy+r+30); ctx.font='12px sans-serif'; ctx.fillStyle='#96a6bc'; ctx.fillText(`Δf ${this.state.slipHz.toFixed(3)} Hz`, cx, cy+r+48);
-    },
+
+      // Draw ghost grid pointer when enabled. The ghost grid indicates the slip between the
+      // simulated net frequency (telemetryFreq) and the real grid. The pointer uses
+      // purple colour to differentiate it from the main generator needle.
+      if(this.state.ghostGrid && this.state.ghostAngle !== undefined){
+        const gp = this.wrapDeg((this.state.ghostAngle - this.state.gridAngle));
+        const gAngle = (gp - 90) * Math.PI / 180;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(gAngle);
+        ctx.strokeStyle = '#b78cff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-14, 0);
+        ctx.lineTo(r - 20, 0);
+        ctx.stroke();
+        ctx.restore();
+        // Optionally annotate ghost pointer; keep text subtle
+        ctx.fillStyle = '#b78cff';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('net', cx, cy + r + 60);
+      }
+
+      ctx.fillStyle='#dce9f8'; ctx.font='800 16px sans-serif'; ctx.fillText(`${Math.abs(p).toFixed(1)}°`, cx, cy+r+30);
+      ctx.font='12px sans-serif'; ctx.fillStyle='#96a6bc'; const displaySlip = this.state.breaker === 'CLOSED' ? 0 : this.state.slipHz;
+      ctx.fillText(`Δf ${displaySlip.toFixed(3)} Hz`, cx, cy + r + 48);
+
+    }, // end drawScope
 
     drawTrend(){
       const ctx=this.trendCtx, c=this.els.trend, w=c.width, h=c.height;
@@ -1999,6 +3672,8 @@
       this.pushHistory();
       this.updateUI();
       this.drawScope();
+      // Animate rotor visual every frame using elapsed time
+      this.updateRotor(dt);
       if(document.getElementById('analysis').classList.contains('active')) this.drawTrend();
       requestAnimationFrame(this.tick.bind(this));
     }
