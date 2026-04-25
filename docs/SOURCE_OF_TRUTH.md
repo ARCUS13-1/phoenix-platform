@@ -1,104 +1,94 @@
 # Phoenix Source of Truth
 
-## 🧭 Runtime Authority
+## Runtime Authority
 
-The single canonical runtime is:
+The live simulator is:
 
 - `index.html`
 
-This file is the **only authoritative representation of the live simulator**.
+That’s the only file that actually matters when it comes to how Phoenix behaves.
 
 ---
 
-## 📁 Runtime Roles
+## Runtime Roles
 
-| File | Role |
-|-----|------|
-| `index.html` | Live runtime authority |
-| `phoenix_v9_5_beta_locked.html` | Locked rollback snapshot |
-| `phoenix_v8_baseline_locked.html` | Historical baseline |
-| `phoenix_v10_dev.html` | Active development sandbox |
+- `index.html` → live runtime (this is what users are actually running)
+- `phoenix_v9_5_beta_locked.html` → rollback snapshot if something breaks
+- `phoenix_v8_baseline_locked.html` → older baseline kept for reference
+- `phoenix_v10_dev.html` → where all new work happens
 
 ---
 
-## ⚖️ Authority Rules
+## Rules
 
-- `index.html` is the only runtime-authoritative file.
-- All validation, regression checks, and behavior verification must be performed against `index.html`.
-- Development, rollback, and historical files are **non-authoritative** unless explicitly promoted.
-- If any file conflicts with `index.html`, **`index.html` is correct by definition**.
-
----
-
-## 🔁 Development Workflow
-
-All changes must follow this flow:
-
-1. Develop and test in `phoenix_v10_dev.html`
-2. Validate behavior manually (no assumptions)
-3. Confirm no regression against runtime expectations
-4. Promote into `index.html`
-5. Lock promoted version as a rollback snapshot
-6. Update documentation:
-   - `docs/PROJECT_STATUS.md`
-   - `docs/CHANGELOG.md`
-   - `docs/RUN_MANIFEST.json`
+- If something works in `index.html`, that’s the truth.
+- If something works in a dev file but not in `index.html`, it’s not released.
+- If there’s a conflict between files, trust `index.html` and ignore the rest.
 
 ---
 
-## 🧪 Regression Requirements
+## How changes actually get in
 
-Every promotion must pass the following checks against `index.html`:
+Everything goes through the same path:
 
-### Core Controls
+1. Build it in `phoenix_v10_dev.html`
+2. Test it like you’re trying to break it
+3. Make sure nothing else got worse
+4. Move it into `index.html`
+5. Lock that version as the new rollback file
+6. Update the docs so they match reality
+
+No shortcuts here. If it’s not tested, it doesn’t move.
+
+---
+
+## What has to work before anything gets promoted
+
+### Core controls
 - SIM START / PAUSE / RESET
-- GRID START warmup
-- GEN START / GEN STOP
+- GRID START
+- GEN START / STOP
 
-### Sync + Breaker Logic
-- sync safety gating
-- breaker OPEN / CLOSED / TRIPPED behavior
-- close eligibility correctness
+### Sync + breaker behavior
+- sync window actually matches close eligibility
+- breaker opens, closes, and trips correctly
 
-### Fault Handling
-- fault inject
-- fault clear
-- correct trip behavior
+### Faults
+- faults inject when they’re supposed to
+- faults clear cleanly
+- trips make sense
 
-### Analysis & Review
-- live charts update correctly
-- timing / waveform view renders
-- analysis / logging (SOE) functions
-- export / replay behaves correctly
+### Analysis + review
+- charts update
+- timing view renders
+- logs make sense
+- replay doesn’t break
 
 ### Telemetry
-- telemetry overlay functions
-- fallback behavior is stable when offline
+- overlay works
+- fallback works if data isn’t there
 
 ---
 
-## 🔒 Invariants
+## Things that should not drift
 
-The following must never regress without explicit, documented intent:
+These are basically guardrails:
 
-- single-file runtime architecture
-- no external dependencies
-- conservative sync safety thresholds
-- deterministic state-machine behavior
-- scenarios remain startable, winnable, and single-ending
-- guidance reflects actual simulator behavior
+- still a single-file simulator
+- no random dependencies added
+- sync safety stays conservative
+- state machine stays deterministic
+- drills stay winnable and not contradictory
+- guidance matches what the simulator actually does
 
 ---
 
-## 🧠 Working Rule
+## Working rule
 
-- `index.html` is the live system
-- `phoenix_v10_dev.html` is the experiment
-- nothing is real until it is promoted
+- `index.html` = real system
+- `phoenix_v10_dev.html` = sandbox
 
-If there is any uncertainty:
+Nothing is real until it’s promoted.
 
-👉 trust the runtime  
-👉 not the idea  
-👉 not the dev file  
-👉 not the intention
+If something feels off:
+don’t guess — go check the runtime.
