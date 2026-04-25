@@ -1,195 +1,152 @@
-# Phoenix Platform
+# Phoenix Engineering Platform
 
-Mobile-first single-file power systems simulator for:
+Phoenix is a mobile-first, single-file browser simulator for power-system operator training.
+
+It focuses on:
 
 - Grid ↔ generator synchronization
-- Synchroscope visualization
-- Breaker logic and protection events
-- Fault injection
-- Analysis and event logging
+- Synchroscope training
+- Breaker close / trip / reset logic
+- Fault injection and recovery drills
+- Scenario scoring and debriefs
+- Sequence-of-events logging
 - Timing / waveform logic
 - Telemetry overlay with offline fallback
 
 ## Live Demo
+
 https://arcus13-1.github.io/phoenix-platform/
 
-## Beta Status
+## Current Status
 
-Phoenix is currently in **public beta**.
+Phoenix is in public beta.
 
-The live beta runtime is intended for:
+The live beta is intended for:
+
 - operator workflow testing
 - scenario validation
-- UI and guidance review
-- mobile and desktop behavior checks
-- bug reporting
+- mobile and desktop UI review
+- guidance and debrief feedback
 - training realism feedback
+- bug reporting
 
 ## Runtime Authority
 
-The single shipped runtime source of truth is:
+The shipped public runtime is:
 
 - `index.html`
 
-Development, rollback, or historical files may exist in the repo, but they are not authoritative unless explicitly reflected in:
+Active development happens in:
 
-- `docs/SOURCE_OF_TRUTH.md`
-- `docs/PROJECT_STATUS.md`
-- `docs/RUN_MANIFEST.json`
-
-## Repository Runtime Roles
-
-### Shipped Runtime
-- `index.html`
-
-### Current Locked Rollback
-- `phoenix_v9_5_beta_locked.html`
-
-### Historical Baseline
-- `phoenix_v8_baseline_locked.html`
-
-### Active Development Sandbox
 - `phoenix_v10_dev.html`
 
-Working rule:
-- `index.html` is the only shipped runtime authority
-- `phoenix_v9_5_beta_locked.html` is the current rollback target for the promoted beta
-- `phoenix_v8_baseline_locked.html` remains the historical baseline
-- `phoenix_v10_dev.html` is the active development sandbox
-- nothing is considered released until it is validated and promoted into `index.html`
+Rollback and historical files may exist, but they are not the live runtime unless promoted and documented.
+
+## Runtime Files
+
+| File | Role |
+|---|---|
+| `index.html` | Shipped public beta runtime |
+| `phoenix_v10_dev.html` | Active development sandbox |
+| `phoenix_v9_5_beta_locked.html` | Current rollback snapshot |
+| `phoenix_v8_baseline_locked.html` | Historical baseline |
+
+Nothing is considered released until it is validated and promoted into `index.html`.
 
 ## Current Live Runtime Scope
 
-The current live runtime is the promoted **v9.5 public beta** single-file build with:
+The current public beta includes:
 
-- Manual sync + auto match
-- Explicit state machine flow
-- Dwell-time sync gating
-- Breaker OPEN / CLOSED / TRIPPED behavior
-- Fault injection and fault clear
-- Scenario-based drills
-- Operator guidance panel
-- Trip summary panel
-- Sequence-of-events style logging
-- Analysis view
-- Timing Studio
-- Telemetry / ghost-frequency overlay
-- Trend markers
-- Fine-trim governor / AVR controls
-- Lower-load support for overcurrent recovery
-- Mobile + tablet optimized UI
+- manual sync and auto-match
+- explicit state-machine flow
+- dwell-time sync gating
+- breaker OPEN / CLOSED / TRIPPED behavior
+- fault injection and clearing
+- six scenario drills
+- operator guidance
+- trip summary
+- mission debrief
+- SOE-style logging
+- analysis view
+- timing studio
+- telemetry / ghost-frequency overlay
+- trend markers
+- fine-trim governor and AVR controls
+- lower-load support for overcurrent recovery
+- mobile and tablet optimized layout
 
 ## Beta Drill Set
 
-Current drill set:
-- quickstart
-- vsag
-- phaseerr
-- overcurrent
-- stuck
-- combined
+Current drills:
 
-## Feedback Routing
+- `quickstart`
+- `vsag`
+- `phaseerr`
+- `overcurrent`
+- `stuck`
+- `combined`
+
+## Feedback
 
 Use **Issues** for:
+
 - reproducible bugs
 - scenario contradictions
 - incorrect trip behavior
-- wrong debrief result wording
-- score/result mismatches
+- score or result mismatches
 - mobile layout defects
-- guidance that directly conflicts with simulator behavior
+- guidance that conflicts with simulator behavior
 
 Use **Discussions** for:
-- simulator impressions
+
 - training realism feedback
 - usability comments
 - feature ideas
 - operator workflow suggestions
 - general beta discussion
 
-## What to Include in Beta Feedback
+## Bug Report Checklist
 
-When reporting a bug or drill issue, include:
+When reporting an issue, include:
 
 - device
 - browser
-- scenario or drill used
+- scenario used
 - expected behavior
 - actual behavior
-- screenshot if available
-- exported log if available
+- screenshot, if available
+- exported log, if available
 
-## Core Project Docs
+## Project Docs
 
 - [Source of Truth](docs/SOURCE_OF_TRUTH.md)
 - [Project Status](docs/PROJECT_STATUS.md)
 - [Changelog](docs/CHANGELOG.md)
 - [Run Manifest](docs/RUN_MANIFEST.json)
 
-## Purpose
-
-Built for real-world electrical testing training and system understanding.
-
-Designed to simulate field conditions in a clean, interactive environment while preserving a single-file runtime for portability, validation discipline, and fast deployment.
-
-## Status
-
-Active development and public beta testing.
-
-Current shipped runtime authority: `index.html`  
-Current locked rollback target: `phoenix_v9_5_beta_locked.html`  
-Current active development sandbox: `phoenix_v10_dev.html`
-
-## Promotion Discipline
+## Development Discipline
 
 Promotion flow:
-1. develop and test in `phoenix_v10_dev.html`
-2. validate behavior manually
-3. update docs and manifest
-4. promote into `index.html`
-5. lock the promoted runtime as the new rollback snapshot
 
-This keeps the public runtime stable enough for meaningful beta feedback instead of turning the repo into a landfill with buttons.
+1. Build and test in `phoenix_v10_dev.html`
+2. Validate all core controls and drills
+3. Update docs and manifest
+4. Promote into `index.html`
+5. Lock the promoted runtime as the new rollback snapshot
 
-## Notes on Telemetry and Usage Monitoring
-
-At this stage, GitHub Pages is being used as the public beta host.
-
-Feedback collection currently depends on:
-- GitHub Issues
-- GitHub Discussions
-- direct tester feedback
-- exported simulator logs
-
-If usage analytics or session monitoring are later added, they should be explicitly documented in both the repo and the runtime.
+This keeps the public beta stable enough for useful feedback instead of becoming a glowing junk drawer with a synchroscope.
 
 ## Near-Term Beta Focus
 
-- stabilize all six drills under public beta use
-- tighten result / debrief trustworthiness
-- refine operator guidance clarity
-- review mobile behavior under real testing
+- stabilize all six drills
+- improve debrief and result trust
+- tighten operator guidance
+- validate mobile behavior
 - improve structured issue intake
 - prepare for post-beta hardening
 
-## Repository Structure
+## Purpose
 
-Key files:
-- `index.html` → shipped public runtime
-- `phoenix_v10_dev.html` → active development sandbox
-- `phoenix_v9_5_beta_locked.html` → current locked rollback snapshot
-- `phoenix_v8_baseline_locked.html` → historical baseline
-- `docs/PROJECT_STATUS.md` → current project state
-- `docs/CHANGELOG.md` → release and sprint history
-- `docs/RUN_MANIFEST.json` → runtime / promotion manifest
+Phoenix is built for real-world electrical training and system understanding.
 
-## Beta Request
-
-If you are testing Phoenix:
-- run a drill
-- try to break it
-- report what contradicted your expectations
-- include evidence when possible
-
-That is how this gets hardened into something trustworthy.
+The goal is to make synchronization, breaker behavior, fault response, and event review easier to learn through an interactive single-file simulator that runs directly in the browser.
