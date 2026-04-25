@@ -2,50 +2,79 @@
   "task": "v9.5 public beta promotion",
   "date": "2026-04-19",
   "version": "v9.5",
+
   "files": {
     "runtime": "index.html",
     "rollback": "phoenix_v9_5_beta_locked.html",
     "historical_baseline": "phoenix_v8_baseline_locked.html",
     "dev": "phoenix_v10_dev.html"
   },
+
   "status": "promoted_public_beta",
+
   "gates": {
-    "GateA": true,
-    "GateB": true,
-    "GateC": true
+    "GateA_runtime_integrity": true,
+    "GateB_scenario_validation": true,
+    "GateC_no_regression": true
   },
+
   "schema_valid": true,
+
   "changes": [
     "Promoted tested v9.5 beta build into index.html",
     "Locked promoted runtime as phoenix_v9_5_beta_locked.html",
-    "Advanced active development sandbox to phoenix_v10_dev.html",
-    "Added state-aware scenario engine",
-    "Added dwell-time sync gating",
-    "Added trip summary panel and trip snapshot capture",
-    "Added trend event markers",
+    "Advanced development sandbox to phoenix_v10_dev.html",
+
+    "Added state-aware scenario engine (armCondition, injectCondition, successCondition, failureCondition)",
+    "Added dwell-time sync gating (syncReadyTimer, syncLostTimer)",
+    "Added trip summary panel with snapshot capture",
+    "Added event markers to analysis trend",
     "Added fine-trim governor and AVR nudge controls",
     "Added lower-load control for overcurrent recovery",
-    "Added scope-status indicator",
-    "Hardened overcurrent drill with 3.0 s stable dwell requirement",
-    "Hardened failure semantics for timeout and trip outcomes",
+    "Added scope-status indicator (OFFLINE / TRACKING / SYNC WINDOW / PARALLEL / TRIPPED)",
+
+    "Hardened overcurrent drill with 3.0 s post-injection stable dwell requirement",
+    "Hardened failure semantics to distinguish SUCCESS, FAILED — TIMEOUT, FAILED — TRIP",
     "Added drill-specific blocker guidance during active scenarios"
   ],
+
   "validated_behaviors": [
-    "State machine and start functions present",
-    "Sync-gating timers present in state and physics loop",
+    "State machine and start/reset flows verified",
+    "Sync-gating timers integrated into physics loop",
+    "Close eligibility gated by dwell timing",
     "Trip snapshot captures dv, df, dphi, current, faults, and scenarioId",
-    "All scenarios define armCondition, injectCondition, successCondition, and failureCondition",
+    "All scenarios define armCondition, injectCondition, successCondition, failureCondition",
     "Overcurrent injects only after breaker closure",
-    "Overcurrent success requires injection plus stable current below 1400 A for 3.0 s",
-    "Scope-status element and scenario-state panel elements are present",
-    "Failure semantics distinguish SUCCESS, FAILED — TIMEOUT, and FAILED — TRIP",
-    "Live public beta runtime promoted into index.html"
+    "Overcurrent success requires current < 1400 A for continuous 3.0 s dwell",
+    "Scope-status and scenario-state panels render correctly",
+    "Failure semantics correctly label SUCCESS, FAILED — TIMEOUT, FAILED — TRIP",
+    "Live runtime successfully promoted into index.html"
   ],
+
+  "invariants": [
+    "Single-file runtime architecture preserved",
+    "No external dependencies introduced",
+    "Core simulator controls unchanged (start, stop, breaker, faults)",
+    "Default protection thresholds preserved (ΔV, Δf, Δφ, overcurrent)",
+    "Scenarios remain startable, winnable, and single-ending"
+  ],
+
   "remaining_risks": [
-    "Public beta may expose scenario edge cases not found in manual validation",
-    "Mobile readability should continue to be verified across devices",
-    "Guidance wording may still need refinement from real tester feedback",
-    "Post-beta hardening may still be required before stable release candidate"
+    "Public beta may expose untested scenario edge cases",
+    "Mobile layout and readability require broader device validation",
+    "Guidance wording may not fully align with operator expectations yet",
+    "Replay and debrief interpretation may need refinement under real usage",
+    "PHASE-ERR timing window sensitivity may require further tuning"
   ],
-  "notes": "v9.5 promoted into index.html as the public beta runtime. Future non-shipped work continues in phoenix_v10_dev.html."
+
+  "next_actions": [
+    "Enable GitHub issue templates and Discussions",
+    "Begin structured beta feedback intake",
+    "Triage scenario contradictions and UI clarity issues",
+    "Validate mobile behavior across multiple devices",
+    "Continue development in phoenix_v10_dev.html",
+    "Promote only after validated regression-free pass"
+  ],
+
+  "notes": "v9.5 promoted as public beta runtime. All forward development continues in phoenix_v10_dev.html until next validated promotion."
 }
