@@ -1,0 +1,30 @@
+name: Drill Feedback
+description: Report scenario behavior, realism, or contradictions
+title: "[DRILL] "
+labels: ["drill"]
+
+body:
+  - type: input
+    id: scenario
+    attributes:
+      label: Scenario
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened during the drill?
+
+  - type: textarea
+    id: expectation
+    attributes:
+      label: What did you expect?
+
+  - type: textarea
+    id: realism
+    attributes:
+      label: Realism Notes
+
+  - type: textarea
+    id: improvement
+    attributes:
+      label: Suggested Improvement
