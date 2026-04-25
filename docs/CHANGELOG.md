@@ -2,12 +2,12 @@
 
 ## [2026-04-19] — Public Beta Promotion (v9.5)
 
-### 🚀 Release Summary
+### Release Summary
 Promoted the **v9.5 beta build** to the live runtime and advanced development into the v10 sandbox.
 
 ---
 
-## 📦 Runtime Promotion
+## Runtime Promotion
 
 - `index.html` → now the live public beta runtime
 - `phoenix_v9_5_beta_locked.html` → locked rollback snapshot
@@ -16,7 +16,7 @@ Promoted the **v9.5 beta build** to the live runtime and advanced development in
 
 ---
 
-## 🧠 Core Systems Added
+## Core Systems Added
 
 ### Scenario Engine
 - State-aware drill system using:
@@ -39,7 +39,7 @@ Promoted the **v9.5 beta build** to the live runtime and advanced development in
 
 ---
 
-## 🎛️ Controls & Interaction
+## Controls & Interaction
 
 - Fine-trim governor and AVR nudge controls
 - State-aware breaker labels with closing feedback
@@ -47,7 +47,7 @@ Promoted the **v9.5 beta build** to the live runtime and advanced development in
 
 ---
 
-## 📊 Analysis & Review
+## Analysis & Review
 
 - Event markers on trend chart
 - Marker index persistence through history trimming
@@ -57,7 +57,7 @@ Promoted the **v9.5 beta build** to the live runtime and advanced development in
 
 ---
 
-## 🔧 Behavioral Changes
+## Behavioral Changes
 
 ### Scenario Execution
 - `loadScenario()` → moved to state-based sequencing
@@ -79,7 +79,7 @@ Promoted the **v9.5 beta build** to the live runtime and advanced development in
 
 ---
 
-## 🐞 Fixes
+## Fixes
 
 - Overcurrent drill:
   - no longer injects before sync
@@ -91,7 +91,7 @@ Promoted the **v9.5 beta build** to the live runtime and advanced development in
 
 ---
 
-## 📚 Documentation Updates
+## Documentation Updates
 
 - README updated for public beta
 - `docs/SOURCE_OF_TRUTH.md` aligned with runtime structure
@@ -100,7 +100,7 @@ Promoted the **v9.5 beta build** to the live runtime and advanced development in
 
 ---
 
-## 🧭 Runtime Roles (Current)
+## Runtime Roles (Current)
 
 | File | Role |
 |-----|------|
@@ -111,7 +111,7 @@ Promoted the **v9.5 beta build** to the live runtime and advanced development in
 
 ---
 
-## 🎯 Notes
+## Notes
 
 This release establishes:
 - stable scenario execution
