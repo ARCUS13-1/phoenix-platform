@@ -1,94 +1,62 @@
-# Phoenix Source of Truth
+# Source of Truth
+
+## Parent Platform
+**ARCUS Systems**
+
+## Current Live Module
+**PHOENIX Gen**
 
 ## Runtime Authority
 
-The live simulator is:
+The current shipped public runtime is:
 
 - `index.html`
 
-That’s the only file that actually matters when it comes to how Phoenix behaves.
+This is the only runtime-authoritative application file.
 
----
+## Development Authority
 
-## Runtime Roles
+Active development happens in:
 
-- `index.html` → live runtime (this is what users are actually running)
-- `phoenix_v9_5_beta_locked.html` → rollback snapshot if something breaks
-- `phoenix_v8_baseline_locked.html` → older baseline kept for reference
-- `phoenix_v10_dev.html` → where all new work happens
+- `phoenix_v10_dev.html`
 
----
+This file is the working sandbox for future changes and is **not** considered live until explicitly promoted.
 
-## Rules
+## Rollback / Historical Files
 
-- If something works in `index.html`, that’s the truth.
-- If something works in a dev file but not in `index.html`, it’s not released.
-- If there’s a conflict between files, trust `index.html` and ignore the rest.
+The following files are retained for rollback and historical reference:
 
----
+- `phoenix_v10_promoted_locked.html` = current locked rollback snapshot
+- `phoenix_v9_5_beta_locked.html` = prior beta snapshot
+- `phoenix_v8_baseline_locked.html` = historical baseline
 
-## How changes actually get in
+These files are not runtime-authoritative unless explicitly promoted.
 
-Everything goes through the same path:
+## Authority Rules
 
-1. Build it in `phoenix_v10_dev.html`
-2. Test it like you’re trying to break it
-3. Make sure nothing else got worse
-4. Move it into `index.html`
-5. Lock that version as the new rollback file
-6. Update the docs so they match reality
+- `index.html` is the only live runtime authority.
+- `phoenix_v10_dev.html` is the active development authority.
+- Locked rollback files are reference and recovery points only.
+- If any non-runtime file disagrees with `index.html`, `index.html` wins.
+- Nothing is considered released until:
+  1. validated,
+  2. documented,
+  3. promoted into `index.html`.
 
-No shortcuts here. If it’s not tested, it doesn’t move.
+## Promotion Rule
 
----
+Any promotion into `index.html` must be accompanied by updates to:
 
-## What has to work before anything gets promoted
+- `docs/PROJECT_STATUS.md`
+- `docs/CHANGELOG.md`
+- `docs/RUN_MANIFEST.json`
 
-### Core controls
-- SIM START / PAUSE / RESET
-- GRID START
-- GEN START / STOP
+## Platform Direction
 
-### Sync + breaker behavior
-- sync window actually matches close eligibility
-- breaker opens, closes, and trips correctly
+Public platform direction is now organized as:
 
-### Faults
-- faults inject when they’re supposed to
-- faults clear cleanly
-- trips make sense
+- **ARCUS Systems** = parent umbrella
+- **PHOENIX Gen** = current live module
+- **ARCUS Grid Lab** = next planned module
 
-### Analysis + review
-- charts update
-- timing view renders
-- logs make sense
-- replay doesn’t break
-
-### Telemetry
-- overlay works
-- fallback works if data isn’t there
-
----
-
-## Things that should not drift
-
-These are basically guardrails:
-
-- still a single-file simulator
-- no random dependencies added
-- sync safety stays conservative
-- state machine stays deterministic
-- drills stay winnable and not contradictory
-- guidance matches what the simulator actually does
-
----
-
-## Working rule
-
-- `index.html` = real system
-- `phoenix_v10_dev.html` = sandbox
-
-Nothing is real until it’s promoted.
-
-If something feels off:
-don’t guess — go check the runtime.
+Legacy naming may still appear in older files or historical records, but ARCUS Systems is now the preferred public umbrella.
