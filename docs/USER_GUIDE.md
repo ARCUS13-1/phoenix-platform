@@ -129,6 +129,12 @@ It should show:
 - active faults
 - recovery guidance
 
+## Visual / Motion Notice
+
+PHOENIX Gen uses moving graphics, rotating machine visuals, pulsing indicators, glow effects, and flashing state cues as part of the training feedback.
+
+If you are sensitive to motion, flashing, or rapid visual changes, use caution while running the simulator. It may help to lower brightness, increase viewing distance, or stop the session if the visuals become uncomfortable.
+
 ## Notes
 
 - This is a training simulator, not a protection study tool.
