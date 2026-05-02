@@ -1,6 +1,6 @@
 # ARCUS Systems
 
-**PHOENIX Gen** is the first live ARCUS Systems module.
+**PHOENIX Gen** Generator to grid synchronization training simulator.
 
 It is a browser-based training simulator for learning how a generator is safely matched and connected to the power grid.
 
