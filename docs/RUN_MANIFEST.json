@@ -1,80 +1,49 @@
 {
-  "task": "v9.5 public beta promotion",
-  "date": "2026-04-19",
-  "version": "v9.5",
-
+  "task": "v10 public beta promotion",
+  "date": "2026-05-01",
+  "version": "v10",
+  "brand": {
+    "parent_system": "ARCUS Systems",
+    "live_module": "PHOENIX Gen",
+    "next_module": "ARCUS Grid Lab"
+  },
   "files": {
     "runtime": "index.html",
-    "rollback": "phoenix_v9_5_beta_locked.html",
+    "rollback": "phoenix_v10_promoted_locked.html",
+    "prior_beta_snapshot": "phoenix_v9_5_beta_locked.html",
     "historical_baseline": "phoenix_v8_baseline_locked.html",
     "dev": "phoenix_v10_dev.html"
   },
-
   "status": "promoted_public_beta",
-
   "gates": {
-    "GateA_runtime_integrity": true,
-    "GateB_scenario_validation": true,
-    "GateC_no_regression": true
+    "runtime_integrity": true,
+    "scenario_validation": true,
+    "no_regression": true
   },
-
-  "schema_valid": true,
-
-  "changes": [
-    "Promoted tested v9.5 beta build into index.html",
-    "Locked promoted runtime as phoenix_v9_5_beta_locked.html",
-    "Advanced development sandbox to phoenix_v10_dev.html",
-
-    "Added state-aware scenario engine (armCondition, injectCondition, successCondition, failureCondition)",
-    "Added dwell-time sync gating (syncReadyTimer, syncLostTimer)",
-    "Added trip summary panel with snapshot capture",
-    "Added event markers to analysis trend",
-    "Added fine-trim governor and AVR nudge controls",
-    "Added lower-load control for overcurrent recovery",
-    "Added scope-status indicator (OFFLINE / TRACKING / SYNC WINDOW / PARALLEL / TRIPPED)",
-
-    "Hardened overcurrent drill with 3.0 s post-injection stable dwell requirement",
-    "Hardened failure semantics to distinguish SUCCESS, FAILED — TIMEOUT, FAILED — TRIP",
-    "Added drill-specific blocker guidance during active scenarios"
-  ],
-
   "validated_behaviors": [
-    "State machine and start/reset flows verified",
-    "Sync-gating timers integrated into physics loop",
-    "Close eligibility gated by dwell timing",
-    "Trip snapshot captures dv, df, dphi, current, faults, and scenarioId",
-    "All scenarios define armCondition, injectCondition, successCondition, failureCondition",
-    "Overcurrent injects only after breaker closure",
-    "Overcurrent success requires current < 1400 A for continuous 3.0 s dwell",
-    "Scope-status and scenario-state panels render correctly",
-    "Failure semantics correctly label SUCCESS, FAILED — TIMEOUT, FAILED — TRIP",
-    "Live runtime successfully promoted into index.html"
+    "state machine flow works",
+    "sync gating works",
+    "breaker logic works",
+    "all six scenarios still run",
+    "trip summary and debrief still work",
+    "rotor tab renders",
+    "mechanical and magnetic training views render",
+    "stress meter renders",
+    "index.html promoted successfully"
   ],
-
-  "invariants": [
-    "Single-file runtime architecture preserved",
-    "No external dependencies introduced",
-    "Core simulator controls unchanged (start, stop, breaker, faults)",
-    "Default protection thresholds preserved (ΔV, Δf, Δφ, overcurrent)",
-    "Scenarios remain startable, winnable, and single-ending"
-  ],
-
   "remaining_risks": [
-    "Public beta may expose untested scenario edge cases",
-    "Mobile layout and readability require broader device validation",
-    "Guidance wording may not fully align with operator expectations yet",
-    "Replay and debrief interpretation may need refinement under real usage",
-    "PHASE-ERR timing window sensitivity may require further tuning"
+    "public beta may expose more edge cases",
+    "mobile readability still needs broader testing",
+    "guidance wording may still need tightening",
+    "replay behavior still needs refinement",
+    "some CSS sections still need consolidation"
   ],
-
   "next_actions": [
-    "Enable GitHub issue templates and Discussions",
-    "Begin structured beta feedback intake",
-    "Triage scenario contradictions and UI clarity issues",
-    "Validate mobile behavior across multiple devices",
-    "Continue development in phoenix_v10_dev.html",
-    "Promote only after validated regression-free pass"
-  ],
-
-  "notes": "v9.5 promoted as public beta runtime. All forward development continues in phoenix_v10_dev.html until next validated promotion."
+    "enable issue templates",
+    "enable Discussions",
+    "collect public beta feedback",
+    "triage bugs and contradictions",
+    "continue work in phoenix_v10_dev.html",
+    "plan ARCUS Grid Lab"
+  ]
 }
