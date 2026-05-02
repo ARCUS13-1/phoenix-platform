@@ -1,35 +1,30 @@
 ---
 name: Bug report
-about: Report a reproducible bug or contradiction in PHOENIX Gen
+about: Report a bug, contradiction, or broken behavior
 title: "[BUG] "
 labels: bug
 assignees: ""
 ---
 
-## Summary
+## What broke
 
-Describe the bug clearly in 1 to 3 sentences.
+Describe the problem clearly.
 
-## Module
+## Where did it happen
 
-- [ ] PHOENIX Gen
-- [ ] Other / unsure
+- [ ] startup / controls
+- [ ] sync logic
+- [ ] breaker behavior
+- [ ] scenario drill
+- [ ] guidance / debrief
+- [ ] rotor / magnetic view
+- [ ] analysis / logging
+- [ ] timing studio
+- [ ] telemetry overlay
+- [ ] mobile layout
+- [ ] other
 
-## Area
-
-- [ ] Simulator controls
-- [ ] Sync logic
-- [ ] Breaker behavior
-- [ ] Scenario drill
-- [ ] Guidance / debrief
-- [ ] Rotor / magnetic training view
-- [ ] Analysis / logging
-- [ ] Timing Studio
-- [ ] Telemetry overlay
-- [ ] Mobile layout
-- [ ] Other
-
-## Scenario Used
+## Scenario
 
 - [ ] quickstart
 - [ ] vsag
@@ -43,18 +38,18 @@ Describe the bug clearly in 1 to 3 sentences.
 
 - Device:
 - Browser:
-- Screen orientation:
 - Desktop or mobile:
+- Screen orientation:
 
-## Expected Behavior
+## Expected behavior
 
-What did you expect to happen?
+What should have happened?
 
-## Actual Behavior
+## Actual behavior
 
-What actually happened?
+What happened instead?
 
-## Steps to Reproduce
+## Steps to reproduce
 
 1.
 2.
@@ -66,16 +61,12 @@ What actually happened?
 - Screenshot:
 - Exported log:
 - Screen recording:
-- Other notes:
+- Extra notes:
 
 ## Severity
 
-- [ ] Minor annoyance
-- [ ] Training clarity issue
-- [ ] Drill contradiction
-- [ ] Functional bug
-- [ ] Promotion blocker
-
-## Additional Notes
-
-Anything else that helps reproduce or understand the issue.
+- [ ] minor
+- [ ] confusing
+- [ ] breaks training flow
+- [ ] major bug
+- [ ] promotion blocker
