@@ -1,17 +1,8 @@
 <!--
- PHOENIX GEN v10 DEV
- ARCUS Systems single-file development sandbox for grid ↔ generator synchronizing training.
+PHOENIX Gen v10 dev
 
- Current implemented areas:
- - simulator control and state machine
- - grid / generator start-stop flow
- - synchroscope and sync gating
- - breaker close / open / trip / reset
- - fault drills and debrief
- - trend, SOE log, timing studio
- - telemetry overlay fallback
- - stress meter and rotor training visual
- - progression, playbook, instructor shell
+Work here first.
+Promote to index.html only after validation.
 
  Partial / stubbed areas:
  - relay lab
@@ -56,7 +47,7 @@
           Arial,
           sans-serif;
 
-        /* Visual convergence design tokens */
+        /* Shared shell colors and glow values */
         --bg-0: #060b12;
         --bg-1: #0b1320;
         --shell: #101a2a;
@@ -353,11 +344,13 @@
       }
 
       .panel h2 {
-        margin: 0 0 10px;
-        font-size: 12px;
+        margin: 0 0 12px;
+        font-size: 13px;
+        line-height: 1.1;
         text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: var(--muted);
+        letter-spacing: 0.12em;
+        color: var(--cyan);
+        font-weight: 800;
       }
 
       .btn-grid {
@@ -529,12 +522,7 @@
       }
 
       /*
-     * === UI corrections for mobile trust and navigation ===
-     * These overrides adjust the mission strip, tab bar, chips, replay controls
-     * and container heights to improve usability on phones. By adding them
-     * toward the end of the stylesheet, they override earlier definitions
-     * without rewriting the original code.
-     */
+      /* Mobile cleanup: keep the rail scrollable and controls easy to hit */
       /* Mission strip should not wrap lines; enable horizontal scrolling */
       .mission-strip {
         flex-wrap: nowrap;
@@ -547,8 +535,6 @@
       .mission-strip::-webkit-scrollbar {
         display: none;
       }
-
-      /* Removed specific horizontal scrolling behaviour for .tabs and flex-basis prevention. Consolidated definitions will handle wrapping and scroll behaviour. */
 
       /* Bigger filter chips for better tap targets */
       .log-filters .chip {
@@ -569,16 +555,11 @@
         border-radius: 3px;
       }
 
-      /* Duplicate .app height definition removed; consolidated layout defined later */
-      /* .app height handled in consolidated definitions */
-
-      /* Duplicate body overflow rule removed; handled by consolidated definition */
-
-      /* Duplicate .view scroll behaviour removed; handled by consolidated definition */
-
-      /* Removed earlier responsive metrics rules; unified in consolidated definitions */
-
-      /* Duplicate tab bar and tab sizing rules removed; handled by consolidated definition */
+      .replay-bar input[type='range']::-webkit-slider-thumb {
+        width: 16px;
+        height: 16px;
+        margin-top: -5px;
+      }
 
       /* Hide short or full labels depending on viewport width */
       .tab .short-label {
@@ -623,7 +604,6 @@
         }
       }
 
-      /* Duplicate .app row structure removed; consolidated layout defined later */
       .tiny .k {
         font-size: 10px;
         color: var(--muted);
@@ -955,12 +935,7 @@
         }
       }
 
-      /* -------------------------------------------------------------------------
-       Consolidated layout definitions for body, app, metrics, tabs, tab, view,
-       sync-dock and scope-meta. These unify multiple earlier rules and provide
-       responsive behaviour, particularly for mobile phones. Do not duplicate
-       these definitions elsewhere.
-    ------------------------------------------------------------------------- */
+      /* Main layout rules. Keep these as the final authority for shell sizing and tab flow. */
       body {
         margin: 0;
         height: 100%;
@@ -1118,9 +1093,7 @@
         /* On phones, the scope-meta controls should stack in 2 columns rather than 4 */
       }
 
-      /* -------------------------------------------------------------------------*/
-      /* VISUAL CONVERGENCE STYLES */
-      /* Upgrade shell header */
+      /* Shell polish */
       .top {
         border-bottom: 1px solid var(--line-strong);
         background: linear-gradient(180deg, rgba(4, 8, 14, 0.96), rgba(9, 16, 28, 0.94));
@@ -1594,16 +1567,22 @@
 
       .rotor-container {
         display: grid;
-        grid-template-columns: 220px minmax(320px, 1fr) 220px;
+        grid-template-columns: 220px minmax(360px, 1fr) 220px;
         align-items: start;
         gap: 24px;
-        padding: 18px 12px 24px;
-        min-height: auto;
+        padding: 20px 12px 28px;
       }
 
       .rotor-side {
         display: grid;
         gap: 10px;
+      }
+
+      .rotor-center-stack {
+        display: grid;
+        justify-items: center;
+        gap: 10px;
+        min-width: 0;
       }
 
       .rotor-readout-card {
@@ -1616,10 +1595,11 @@
 
       .rotor-readout-card strong {
         display: block;
-        font-size: 10px;
-        letter-spacing: 0.08em;
+        font-size: 11px;
+        letter-spacing: 0.1em;
         color: var(--muted);
         margin-bottom: 6px;
+        font-weight: 900;
       }
 
       .rotor-readout-card div:last-child {
@@ -1628,90 +1608,241 @@
         color: var(--text);
       }
 
-      @media (max-width: 980px) {
-        .rotor-container {
-          grid-template-columns: 1fr;
-          justify-items: center;
-        }
-
-        .rotor-side {
-          width: min(520px, 100%);
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
+      .machine-disc {
+        width: 360px;
+        height: 360px;
+        position: relative;
+        border-radius: 50%;
+        background: radial-gradient(circle at center, #0d1726 0%, #0b1320 56%, #08101c 100%);
+        border: 2px solid rgba(89, 215, 255, 0.18);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+          0 0 28px rgba(89, 215, 255, 0.14);
+        overflow: visible;
       }
 
-      /* Enlarged rotor disc for better instructional clarity.  The disc scales up while retaining
-       responsive limits; the stator ring grows accordingly. */
-      .rotor-disc {
-        width: 320px;
-        height: 320px;
-        display: grid;
-        place-items: center;
+      .stator-ring {
+        position: absolute;
+        inset: 24px;
         border-radius: 50%;
-        background: radial-gradient(circle at center, var(--panel), #0f1b2c 68%, #0a1320 100%);
-        border: 5px solid var(--line);
-        position: relative;
-        box-shadow: 0 0 24px rgba(89, 215, 255, 0.2);
-        transition:
-          transform 0.08s linear,
-          border-color 0.15s linear,
-          box-shadow 0.15s linear;
+        border: 10px solid rgba(89, 215, 255, 0.22);
+        box-shadow: inset 0 0 18px rgba(89, 215, 255, 0.06);
+      }
+
+      .stator-slots {
+        position: absolute;
+        inset: 34px;
+        border-radius: 50%;
+        pointer-events: none;
+      }
+
+      .stator-slots::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: repeating-conic-gradient(
+          from -90deg,
+          rgba(89, 215, 255, 0.22) 0deg 4deg,
+          transparent 4deg 20deg
+        );
+        -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%, #000 72%, transparent 73%);
+        mask: radial-gradient(circle, transparent 62%, #000 63%, #000 72%, transparent 73%);
+        opacity: 0.95;
+      }
+
+      .phase-group {
+        position: absolute;
+        width: 42px;
+        height: 18px;
+        border-radius: 10px;
+        opacity: 0.28;
+        box-shadow: 0 0 12px rgba(255, 255, 255, 0.08);
+      }
+
+      .phase-a {
+        background: rgba(246, 196, 83, 0.55);
+      }
+      .phase-b {
+        background: rgba(89, 215, 255, 0.5);
+      }
+      .phase-c {
+        background: rgba(49, 210, 138, 0.5);
+      }
+
+      .phase-a-1 {
+        top: 70px;
+        left: 158px;
+        transform: rotate(0deg);
+      }
+      .phase-a-2 {
+        bottom: 70px;
+        right: 158px;
+        transform: rotate(180deg);
+      }
+      .phase-b-1 {
+        top: 138px;
+        right: 74px;
+        transform: rotate(60deg);
+      }
+      .phase-b-2 {
+        bottom: 138px;
+        left: 74px;
+        transform: rotate(240deg);
+      }
+      .phase-c-1 {
+        bottom: 138px;
+        right: 74px;
+        transform: rotate(120deg);
+      }
+      .phase-c-2 {
+        top: 138px;
+        left: 74px;
+        transform: rotate(300deg);
+      }
+
+      .air-gap-ring {
+        position: absolute;
+        inset: 94px;
+        border-radius: 50%;
+        border: 2px dashed rgba(255, 255, 255, 0.08);
+      }
+
+      .rotor-assembly {
+        position: absolute;
+        inset: 108px;
+        border-radius: 50%;
         transform-origin: 50% 50%;
         will-change: transform;
       }
 
-      .rotor-disc .blade {
+      .rotor-body {
+        position: absolute;
+        inset: 14px;
+        border-radius: 50%;
+        background: radial-gradient(circle at center, #1e2c42 0%, #172338 58%, #101a2a 100%);
+        border: 2px solid rgba(255, 255, 255, 0.06);
+        box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.28);
+      }
+
+      .pole {
+        position: absolute;
+        left: 50%;
+        width: 42px;
+        height: 108px;
+        margin-left: -21px;
+        border-radius: 22px;
+        opacity: 0.92;
+      }
+
+      .pole-north {
+        top: 0;
+        background: linear-gradient(180deg, rgba(246, 196, 83, 0.92), rgba(246, 196, 83, 0.3));
+      }
+
+      .pole-south {
+        bottom: 0;
+        background: linear-gradient(180deg, rgba(89, 215, 255, 0.3), rgba(89, 215, 255, 0.9));
+        transform: rotate(180deg);
+      }
+
+      .field-band {
+        position: absolute;
+        inset: 34px;
+        border-radius: 50%;
+        border: 3px solid rgba(246, 196, 83, 0.28);
+        box-shadow: 0 0 20px rgba(246, 196, 83, 0.08);
+      }
+
+      .hub {
         position: absolute;
         top: 50%;
         left: 50%;
-        width: 4px;
-        height: 112px;
-        margin-left: -2px;
-        margin-top: -112px;
-        background: var(--gold);
-        transform-origin: 50% 100%;
-        border-radius: 2px;
-        box-shadow: 0 0 8px rgba(246, 196, 83, 0.25);
-      }
-
-      /* Stator ring and hub for the rotor visual.  The stator is rendered via a pseudo‑element on
-       the rotor disc.  It remains stationary and uses a dashed outline to suggest slots.  The
-       hub is represented via the ::after pseudo‑element.  When the breaker is closed, the
-       rotor disc receives the .locked class which adds a green glow to indicate synchronous lock. */
-      .rotor-disc::before {
-        content: '';
-        position: absolute;
-        top: -28px;
-        left: -28px;
-        width: calc(100% + 56px);
-        height: calc(100% + 56px);
+        width: 34px;
+        height: 34px;
+        margin-left: -17px;
+        margin-top: -17px;
         border-radius: 50%;
-        border: 5px dashed rgba(89, 215, 255, 0.28);
-        box-sizing: border-box;
-        pointer-events: none;
+        background: #dce9f8;
+        box-shadow: 0 0 12px rgba(220, 233, 248, 0.15);
       }
 
-      .rotor-disc::after {
-        content: '';
+      .shaft {
         position: absolute;
-        top: 50%;
         left: 50%;
-        transform: translate(-50%, -50%);
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: var(--panel2);
-        box-shadow:
-          inset 0 0 4px rgba(255, 255, 255, 0.1),
-          0 0 8px rgba(89, 215, 255, 0.15);
-        pointer-events: none;
+        width: 12px;
+        margin-left: -6px;
+        background: linear-gradient(180deg, #9db2c8, #667b92);
+        border-radius: 8px;
       }
 
-      .rotor-disc.locked {
-        box-shadow:
-          0 0 20px var(--green),
-          0 0 12px var(--green) inset;
-        border-color: var(--green);
+      .shaft-top {
+        top: -38px;
+        height: 54px;
+      }
+
+      .shaft-bottom {
+        bottom: -38px;
+        height: 54px;
+      }
+
+      .bearing {
+        position: absolute;
+        left: 50%;
+        width: 34px;
+        height: 16px;
+        margin-left: -17px;
+        border-radius: 10px;
+        background: linear-gradient(180deg, #32475f, #1a2635);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .bearing-top {
+        top: 70px;
+      }
+      .bearing-bottom {
+        bottom: 70px;
+      }
+
+      .coupling {
+        position: absolute;
+        left: 50%;
+        bottom: -22px;
+        width: 48px;
+        height: 16px;
+        margin-left: -24px;
+        border-radius: 10px;
+        background: linear-gradient(180deg, #5c7088, #2a3849);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .lock-halo {
+        position: absolute;
+        inset: 12px;
+        border-radius: 50%;
+        border: 4px solid transparent;
+        pointer-events: none;
+        opacity: 0;
+        transition:
+          opacity 0.18s ease,
+          border-color 0.18s ease,
+          box-shadow 0.18s ease;
+      }
+
+      .lock-halo.locked {
+        opacity: 1;
+        border-color: rgba(49, 210, 138, 0.72);
+        box-shadow: 0 0 24px rgba(49, 210, 138, 0.28);
+      }
+
+      .torque-arrow {
+        position: absolute;
+        top: 14px;
+        right: 18px;
+        font-size: 22px;
+        font-weight: 900;
+        color: var(--gold);
+        opacity: 0.7;
       }
 
       .rotor-info {
@@ -1721,6 +1852,38 @@
         font-weight: 700;
         text-align: center;
         min-height: 14px;
+      }
+
+      .rotor-caption {
+        max-width: 560px;
+        text-align: left;
+      }
+
+      .machine-disc.mechanical-high-stress {
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+          0 0 26px rgba(255, 107, 107, 0.18);
+      }
+
+      .machine-disc.mechanical-coupled {
+        border-color: rgba(49, 210, 138, 0.32);
+      }
+
+      @media (max-width: 980px) {
+        .rotor-container {
+          grid-template-columns: 1fr;
+          justify-items: center;
+        }
+
+        .rotor-side {
+          width: min(560px, 100%);
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .machine-disc {
+          width: min(90vw, 360px);
+          height: min(90vw, 360px);
+        }
       }
 
       .instructor-panel {
@@ -1805,17 +1968,17 @@
       }
 
       /* -----------------------------------------------------------------------
-       Phone‑specific tab bar behaviour
+         Phone‑specific tab bar behaviour
 
-       On screens under 600px, the lower tab bar should remain as a single
-       horizontal scrolling rail rather than wrapping into multiple rows. The
-       mission strip already scrolls horizontally; the tabs should behave
-       similarly. These overrides disable flex wrapping, enable horizontal
-       scrolling with momentum, hide the scrollbar for cleanliness and ensure
-       each tab maintains its intrinsic width. Scroll‑snap is enabled to
-       encourage alignment on discrete tabs when swiping. These rules are
-       defined late in the stylesheet to override earlier responsive rules.
-    */
+         On screens under 600px, the lower tab bar should remain as a single
+         horizontal scrolling rail rather than wrapping into multiple rows. The
+         mission strip already scrolls horizontally; the tabs should behave
+         similarly. These overrides disable flex wrapping, enable horizontal
+         scrolling with momentum, hide the scrollbar for cleanliness and ensure
+         each tab maintains its intrinsic width. Scroll‑snap is enabled to
+         encourage alignment on discrete tabs when swiping. These rules are
+         defined late in the stylesheet to override earlier responsive rules.
+      */
       @media (max-width: 600px) {
         .tabs {
           flex-wrap: nowrap !important;
@@ -1847,7 +2010,7 @@
         }
       }
 
-      /* === Final Header Alignment Pass === */
+      /* Header alignment */
       .top {
         display: flex;
         align-items: flex-start;
@@ -2028,7 +2191,7 @@
         }
       }
 
-      /* === PHOENIX V10 FINAL UI HARDENING OVERRIDES === */
+      /* UI polish overrides */
 
       /* Header cleanup */
       .top {
@@ -2167,7 +2330,7 @@
         }
       }
 
-      /* === PHOENIX V10 FINAL OVERFLOW / MOBILE HARDENING === */
+      /* Overflow and mobile guardrails */
 
       html,
       body {
@@ -2259,7 +2422,7 @@
         }
       }
 
-      /* === PHOENIX V10 HEADER / DOCTRINE FINAL CLEANUP === */
+      /* Header and doctrine strip */
 
       .top {
         min-height: 104px;
@@ -2384,7 +2547,7 @@
         }
       }
 
-      /* === PHOENIX V10 TAB RAIL FINAL LOCK === */
+      /* Tab rail sizing */
 
       /* Keep only the TOP navigation tabs as compact buttons */
       nav.tabs {
@@ -2449,7 +2612,7 @@
         }
       }
 
-      /* === PHOENIX V10 VIEW SPACING LOCK === */
+      /* View spacing */
 
       main.view {
         padding-top: 14px !important;
@@ -2496,7 +2659,7 @@
         }
       }
 
-      /* === PHOENIX V10 FINAL VIEW FLOW LOCK === */
+      /* One-page scroll flow */
 
       /* Use one page scroll. Prevent active tabs from creating internal scroll deserts. */
       html,
@@ -2545,18 +2708,19 @@
 
       /* Rotor view should not reserve giant blank space before content */
       #rotor.view.active {
-        min-height: auto !important;
+        min-height: auto;
       }
 
       #rotor .stack,
       #rotor .panel {
-        margin-top: 0 !important;
+        margin-top: 0;
       }
 
       #rotor .rotor-container {
-        min-height: auto !important;
-        align-items: start !important;
-        padding-top: 18px !important;
+        min-height: auto;
+        align-items: start;
+        padding-top: 8px;
+        gap: 16px;
       }
 
       /* Desktop: keep sim layout stable without crushing content under tabs */
@@ -2586,28 +2750,28 @@
         }
       }
 
-      /* === PHOENIX V10 SYNC DOCK STICKY SAFE LOCK === */
+      /* Sync dock spacing */
 
       .sync-dock {
-        position: sticky !important;
-        bottom: 12px !important;
-        z-index: 20 !important;
-        margin-top: 18px !important;
+        position: sticky;
+        bottom: 12px;
+        z-index: 20;
+        margin-top: 18px;
       }
 
-      section.card.panel:has(.sync-dock) {
-        padding-bottom: 140px !important;
+      .sync-panel {
+        padding-bottom: 140px;
       }
 
       @media (max-width: 700px) {
         .sync-dock {
-          position: relative !important;
-          bottom: auto !important;
-          z-index: auto !important;
+          position: relative;
+          bottom: auto;
+          z-index: auto;
         }
 
-        section.card.panel:has(.sync-dock) {
-          padding-bottom: 12px !important;
+        .sync-panel {
+          padding-bottom: 12px;
         }
       }
     </style>
@@ -2895,7 +3059,7 @@
           </div>
 
           <div class="stack">
-            <section class="card panel">
+            <section class="card panel sync-panel">
               <h2>Synchroscope</h2>
               <div class="scope-wrap"><canvas id="scope" width="420" height="420"></canvas></div>
               <div class="sync-band">
@@ -3056,6 +3220,19 @@
                 <option value="sync">Normal Sync</option>
                 <option value="trip">Breaker Trip</option>
                 <option value="fault">Fault + Lockout</option>
+                <option value="quickstart">Quickstart Drill</option>
+                <option value="vsag">V-SAG Drill</option>
+                <option value="phaseerr">Phase Error Drill</option>
+                <option value="overcurrent">Overcurrent Drill</option>
+                <option value="stuck">Breaker Stuck Drill</option>
+                <option value="combined">Combined Fault Drill</option>
+                <option value="breaker_close">Breaker Close Sequence</option>
+                <option value="unsafe_close">Unsafe Close / Trip</option>
+                <option value="fault_clear_recover">Fault Clear + Recover</option>
+                <option value="sync_loss">Sync Loss After Close</option>
+                <option value="overload_recovery">Overload Recovery</option>
+                <option value="manual_trim">Manual Trim Sequence</option>
+                <option value="telemetry_overlay">Telemetry / Ghost Overlay</option>
               </select>
               <button class="btn" id="btnLoadPreset">Load Preset</button>
               <button class="btn" id="btnRenderTiming">Render</button>
@@ -3199,12 +3376,14 @@
       <main id="rotor" class="view rotor-view">
         <div class="stack">
           <section class="card panel">
-            <h2>Rotor / Flywheel Visualisation</h2>
+            <h2>Mechanical Rotor / Stator View</h2>
             <p class="hint">
-              Training visual of generator rotor behavior. Rotation tracks generator frequency, RPM
-              is calculated from frequency and pole count, and color/stress cues reflect
-              synchronizing or loaded-machine strain.
+              Physical machine training view. Mechanical deviation is shown only on shaft, bearings,
+              coupling, rotor body motion, and housing stability. Electrical deviation is shown only
+              on stator phase groups, rotor excitation, pole intensity, and air-gap coupling. Rotor
+              rotation never stops after sync; it stabilizes at synchronous speed.
             </p>
+
             <div class="rotor-container">
               <div class="rotor-side" id="rotorLeftRail">
                 <div class="rotor-readout-card">
@@ -3220,18 +3399,52 @@
                   <div id="rotorSlip">--</div>
                 </div>
                 <div class="rotor-readout-card">
-                  <strong>STRESS</strong>
-                  <div id="rotorStress">--</div>
+                  <strong>MODE</strong>
+                  <div id="rotorMode">--</div>
+                </div>
+                <div class="rotor-readout-card">
+                  <strong>BREAKER</strong>
+                  <div id="rotorBreakerState">--</div>
                 </div>
               </div>
 
-              <div style="display: grid; justify-items: center; gap: 10px">
-                <div id="rotorDisc" class="rotor-disc">
-                  <div class="blade" style="transform: rotate(0deg)"></div>
-                  <div class="blade" style="transform: rotate(120deg)"></div>
-                  <div class="blade" style="transform: rotate(240deg)"></div>
+              <div class="rotor-center-stack">
+                <div id="rotorDisc" class="rotor-disc machine-disc">
+                  <div class="stator-ring"></div>
+                  <div class="stator-slots" id="statorSlots"></div>
+
+                  <div class="phase-group phase-a phase-a-1"></div>
+                  <div class="phase-group phase-a phase-a-2"></div>
+                  <div class="phase-group phase-b phase-b-1"></div>
+                  <div class="phase-group phase-b phase-b-2"></div>
+                  <div class="phase-group phase-c phase-c-1"></div>
+                  <div class="phase-group phase-c phase-c-2"></div>
+
+                  <div class="air-gap-ring"></div>
+
+                  <div id="rotorAssembly" class="rotor-assembly">
+                    <div class="rotor-body"></div>
+                    <div class="pole pole-north"></div>
+                    <div class="pole pole-south"></div>
+                    <div class="field-band"></div>
+                    <div class="shaft shaft-top"></div>
+                    <div class="shaft shaft-bottom"></div>
+                    <div class="hub"></div>
+                  </div>
+
+                  <div class="bearing bearing-top"></div>
+                  <div class="bearing bearing-bottom"></div>
+                  <div class="coupling"></div>
+                  <div id="lockHalo" class="lock-halo"></div>
+                  <div id="torqueArrow" class="torque-arrow">↻</div>
                 </div>
+
                 <div id="rotorInfo" class="rotor-info"></div>
+                <div class="hint rotor-caption">
+                  <strong>Mechanical view:</strong> rotor speed, synchronous lock quality,
+                  excitation response, shaft torsion, bearing load, coupling stress, and machine
+                  stability.
+                </div>
 
                 <canvas
                   id="fluxCanvas"
@@ -3240,30 +3453,26 @@
                   aria-label="Magnetic flux training visualization"
                 ></canvas>
                 <div class="hint flux-note">
-                  <strong>Magnetic Flux View — training abstraction.</strong><br />
-                  Rotor speed sets generator frequency. Changing magnetic flux induces voltage in
-                  the stator. Slip is the frequency difference between generator and grid. As slip
-                  approaches zero, phase drift slows.
+                  <strong>Magnetic Field / Sync View — training abstraction.</strong><br />
+                  This lower panel remains the electromagnetic relationship view. It shows rotor
+                  field, stator pickup zones, slip, phase error, and flux coupling. This pass does
+                  not change its role or core drawing logic.
                 </div>
 
                 <div class="checkbox-group" style="margin-top: 8px">
                   <input type="checkbox" id="rotorCollapse" />
-                  <label for="rotorCollapse">Hide Rotor Visual</label>
+                  <label for="rotorCollapse">Hide Mechanical Rotor View</label>
                 </div>
               </div>
 
               <div class="rotor-side" id="rotorRightRail">
                 <div class="rotor-readout-card">
-                  <strong>BREAKER</strong>
-                  <div id="rotorBreakerState">--</div>
+                  <strong>ELEC DEV</strong>
+                  <div id="rotorElecStress">--</div>
                 </div>
                 <div class="rotor-readout-card">
-                  <strong>PHASE</strong>
-                  <div id="rotorPhase">--</div>
-                </div>
-                <div class="rotor-readout-card">
-                  <strong>MODE</strong>
-                  <div id="rotorMode">--</div>
+                  <strong>MECH DEV</strong>
+                  <div id="rotorMechStress">--</div>
                 </div>
                 <div class="rotor-readout-card">
                   <strong>EXCITER</strong>
@@ -3276,6 +3485,10 @@
                 <div class="rotor-readout-card">
                   <strong>SHAFT</strong>
                   <div id="rotorShaft">--</div>
+                </div>
+                <div class="rotor-readout-card">
+                  <strong>BEARING</strong>
+                  <div id="rotorBearing">--</div>
                 </div>
               </div>
             </div>
@@ -3348,6 +3561,9 @@
 
       <footer class="footer">
         <span>ARCUS Systems · PHOENIX GEN v10 Dev · Operator Training Platform</span>
+        <span style="opacity: 0.82"
+          >Visual notice: motion, pulsing, and flashing cues are used for training.</span
+        >
         <span id="clockText">--:--:--.---</span>
       </footer>
     </div>
@@ -3359,9 +3575,115 @@
       };
       (function () {
         const presets = {
-          sync: `GRID:111111111111\nGEN :000011111111\n25CK:000000111111\nBRKR:000000000011`,
-          trip: `CMD :000011111100\n52A :111111000000\nTRIP:000000111111\n86  :000000001111`,
-          fault: `FAULT:000001111100\n50/51:000000111100\nTRIP :000000011110\nLOCK :000000000111`
+          sync: `GRID:111111111111
+        GEN :000011111111
+        25CK:000000111111
+        BRKR:000000000011`,
+
+          trip: `CMD :000011111100
+        52A :111111000000
+        TRIP:000000111111
+        86  :000000001111`,
+
+          fault: `FAULT:000001111100
+        50/51:000000111100
+        TRIP :000000011110
+        LOCK :000000000111`,
+
+          quickstart: `SIM :111111111111
+        GRID:001111111111
+        GEN :000011111111
+        SYNC:000000111111
+        25CK:000000011111
+        BRKR:000000000111`,
+
+          vsag: `GRID :111111111111
+        V-SAG:000011111111
+        GEN  :000001111111
+        AVR  :000000111111
+        25CK :000000011111
+        BRKR :000000001111`,
+
+          phaseerr: `GRID :111111111111
+        GEN  :000011111111
+        SLIP :111111110000
+        PHERR:000011111111
+        25CK :000000001111
+        BRKR :000000000111`,
+
+          overcurrent: `GRID :111111111111
+        GEN  :000011111111
+        25CK :000000111111
+        BRKR :000000001111
+        LOAD :000000011111
+        50/51:000000001111`,
+
+          stuck: `GRID :111111111111
+        GEN  :000011111111
+        STUCK:000001111111
+        CMD  :000000111111
+        52A  :000000000000
+        RESET:000000000111
+        BRKR :000000000011`,
+
+          combined: `GRID :111111111111
+        V-SAG:000011111111
+        PHERR:000011111111
+        GEN  :000001111111
+        AVR  :000000111111
+        GOV  :000000111111
+        25CK :000000011111
+        BRKR :000000001111`,
+
+          breaker_close: `SYNC :111111111111
+        CMD  :000000111111
+        52A  :000000011111
+        BRKR :000000001111`,
+
+          unsafe_close: `GRID :111111111111
+        GEN  :000011111111
+        MISM :000001111111
+        CMD  :000000111111
+        TRIP :000000011111
+        86   :000000001111`,
+
+          fault_clear_recover: `FAULT:111111110000
+        CLR  :000000111100
+        RESET:000000001111
+        GEN  :000000011111
+        25CK :000000000111
+        BRKR :000000000011`,
+
+          sync_loss: `GRID :111111111111
+        GEN  :000011111111
+        25CK :000000111111
+        BRKR :000000011111
+        SYNC :000000011100
+        ALRM :000000001110
+        TRIP :000000000111`,
+
+          overload_recovery: `GRID :111111111111
+        GEN  :000011111111
+        BRKR :000000011111
+        LOADHI:000000011111
+        CURR :000000011111
+        UNLD :000000000111
+        STBL :000000000011`,
+
+          manual_trim: `GRID :111111111111
+        GEN  :000011111111
+        AVR  :000001111111
+        GOV  :000001111111
+        SYNC :000000111111
+        25CK :000000011111
+        BRKR :000000001111`,
+
+          telemetry_overlay: `GRIDREF:111111111111
+        NETFREQ:111111111111
+        GHOST :000011111111
+        GEN   :000011111111
+        SYNC  :000000111111
+        BRKR  :000000001111`
         };
 
         const MODE = Object.freeze({
@@ -3449,7 +3771,7 @@
             injectCondition: (s) => s.gridHealthy && !s.genStarted,
             faultIds: ['V-SAG'],
             maxDurationSec: 180,
-            // Scenario philosophy: operate through the fault — do not clear V-SAG
+            // Training rule: ride through the sag, do not clear it first
             type: 'OPERATE_THROUGH'
           },
           phaseerr: {
@@ -3635,24 +3957,33 @@
             syncReadyTimer: 0,
             syncLostTimer: 0,
 
-            /**
-             * Horizon concept additions: progression, challenge and rotor state
-             * rotorAngle: current rotation angle of rotor disc (deg)
-             * challengeMode: tighter sync & trip thresholds when enabled
-             * totalScore: accumulated score across sessions
-             * unlocks: map of unlocked modules
-             * rank: operator tier based on total score
-             */
+            // Training shell state: progression, unlocks, challenge mode, rotor state
             rotorAngle: 0,
             poleCount: 4,
             primeMoverRPM: 0,
+
+            /* Mechanical state */
+            shaftAngleDeg: 0,
+            syncRPM: 1800,
+            torsionStress: 0,
+            bearingStress: 0,
+            vibrationRatio: 0,
+            couplingStress: 0,
+
+            /* Electrical visual state */
+            electricalStress: 0,
+            mechanicalStress: 0,
+            excitationLevel: 0.5,
+
             challengeMode: false,
             totalScore: 0,
             unlocks: {},
             rank: 'NOVICE',
+
             // Ghost grid state: controls optional net frequency overlay on synchroscope
             ghostGrid: false,
             ghostAngle: 0,
+
             // Log filter settings: categories can be toggled in the analysis view
             logFilters: {
               Operator: true,
@@ -3756,7 +4087,7 @@
 
         const app = {
           state: createInitialState(),
-          // Extend base tabs with concept views: playbook, progression, rotor, instructor
+          // Extra training tabs
           tabs: [
             'sim',
             'analysis',
@@ -3848,6 +4179,7 @@
               'scType',
               'scStable',
               'scopeStatus',
+
               // Horizon concept elements
               'progressSummary',
               'totalProgressFill',
@@ -3858,12 +4190,15 @@
               'noiseToggle',
               'instructorNotes',
               'playbookCards',
+
               // Stress meter elements
               'stressBrief',
               'stressSub',
               'stressBarFill',
+
               // Rotor info readout
               'rotorInfo',
+
               // Rotor extended readouts
               'rotorF',
               'rotorRPM',
@@ -3875,6 +4210,14 @@
               'rotorExciter',
               'rotorThermal',
               'rotorShaft',
+              'rotorAssembly',
+              'lockHalo',
+              'torqueArrow',
+              'rotorElecStress',
+              'rotorMechStress',
+              'rotorBearing',
+              'fluxCanvas',
+
               // Analysis filter & replay elements
               'logFilters',
               'replayBar',
@@ -3883,12 +4226,13 @@
               'replayNext',
               'replayTrip',
               'replaySlider',
+
               // Ghost grid toggle and rotor collapse
               'ghostToggle',
               'rotorCollapse',
+
               // Mission strip
-              'missionStrip',
-              'fluxCanvas'
+              'missionStrip'
             ];
             ids.forEach((id) => (this.els[id] = document.getElementById(id)));
             this.scopeCtx = this.els.scope.getContext('2d');
@@ -3898,7 +4242,7 @@
           buildTabs() {
             const nav = document.getElementById('tabs');
             nav.innerHTML = '';
-            // Full and short names for tabs; short names show on narrow screens
+            // Full and short tab labels
             const names = {
               sim: 'Grid Simulator',
               analysis: 'Analysis & Logging',
@@ -4264,14 +4608,7 @@
             }
           },
 
-          /**
-           * updateScenarioStatePanel()
-           *
-           * Update the compact scenario state readout displayed in the UI. This shows whether a drill is active,
-           * whether the arming/injection conditions have been met, whether the drill has succeeded or failed,
-           * the elapsed time since the scenario started, and the scenario philosophy. This helper is called
-           * from updateUI() on each frame. If no scenario is active, the fields are cleared.
-           */
+          // Refresh the compact scenario status panel. This panel provides at-a-glance information on the current scenario state and key parameters relevant to training, without needing to open the full debrief. It is updated on every tick and whenever scenario-related events occur.
           updateScenarioStatePanel() {
             const sc = this.state.scenario;
             // If the scenario state DOM elements are not present (e.g. on older builds), do nothing.
@@ -4335,14 +4672,7 @@
               }
             }
           },
-          /**
-           * loadProgression()
-           *
-           * Load persistent progression data from localStorage. This includes best scores,
-           * total accumulated score, unlocked modules and operator rank. If no saved
-           * data is found or parsing fails, the existing state values remain. This
-           * helper should be called during init() to restore progression across sessions.
-           */
+          // Restore saved progression state from localStorage. This includes best scores, total score, unlocks and rank. Called on app init to populate the progression tab with persisted data.
           loadProgression() {
             try {
               const saved = localStorage.getItem('phoenix_progression');
@@ -4358,13 +4688,7 @@
             }
           },
 
-          /**
-           * saveProgression()
-           *
-           * Persist current progression data to localStorage. Serialises best scores,
-           * totalScore, unlocks and rank into a JSON string. Called whenever
-           * progression is updated.
-           */
+          // Save progression state to localStorage. This includes best scores, total score, unlocks and rank. Called after progression updates to persist new state.
           saveProgression() {
             try {
               const data = {
@@ -4517,13 +4841,7 @@
             if (adv) adv.style.display = this.state.unlocks.advTelemetry ? 'block' : 'none';
           },
 
-          /**
-           * renderPlaybook()
-           *
-           * Build or update the playbook tab with scenario briefings. Each card summarises
-           * the objective, philosophy and high‑level guidance for the corresponding
-           * scenario. Run this when the playbook tab is activated.
-           */
+          // Rebuild the playbook cards from the scenario map. Each card shows the scenario name, objective, type/philosophy and high-level guidance. Called when the playbook tab is opened to ensure content is up to date with any scenario changes.
           renderPlaybook() {
             const container = document.getElementById('playbookCards');
             if (!container) return;
@@ -4585,7 +4903,8 @@
            */
           updateRotor(dt) {
             const disc = this.els.rotorDisc;
-            if (!disc) return;
+            const rotorAssembly = this.els.rotorAssembly;
+            if (!disc || !rotorAssembly) return;
 
             const s = this.state;
 
@@ -4596,107 +4915,192 @@
               disc.style.display = 'block';
             }
 
-            const stress = this.state.stressRatio || 0;
-            const locked = s.breaker === 'CLOSED';
-            const polePairs = Math.max(1, (s.poleCount || 4) / 2);
-            const mechRPM = (s.genF * 60) / polePairs;
+            const poleCount = Math.max(2, s.poleCount || 4);
+            const syncRPM = (120 * Math.max(0, s.gridF || 60)) / poleCount;
+            const mechRPM = (120 * Math.max(0, s.genF || 0)) / poleCount;
+
+            s.syncRPM = syncRPM;
             s.primeMoverRPM = mechRPM;
 
-            /*
-             * Training-display scale:
-             * literal synchronous mechanical speed is too visually fast for a readable browser rotor.
-             * Keep proportional behavior, but slow the visible animation so lock / slip can be taught.
-             */
-            const rotorDisplayScale = 0.08;
-            const displayDegPerSec = s.genF * 360 * rotorDisplayScale;
+            const slipAbs = Math.abs((s.genF || 0) - (s.gridF || 0));
+            const phaseAbs = Math.abs(this.wrapDeg(s.phaseDeg || 0));
+            const voltageDevPU = Math.min(1.5, Math.abs((s.genV || 0) - (s.gridV || 0)) / 1.5);
+            const currentStress = this.clamp(Math.max(0, (s.currentA || 0) - 900) / 700, 0, 1);
+            const droopStress = this.clamp(Math.abs(s.governorDroopHz || 0) / 0.065, 0, 1);
 
-            s.rotorAngle = (s.rotorAngle || 0) + displayDegPerSec * dt;
+            /* Electrical deviation affects windings, excitation and field intensity */
+            const elecStress = this.clamp(
+              (slipAbs / 0.2) * 0.28 +
+                (phaseAbs / 20) * 0.3 +
+                voltageDevPU * 0.22 +
+                currentStress * 0.2,
+              0,
+              1
+            );
 
-            if (locked) {
-              s.rotorAngle = (s.gridAngle * rotorDisplayScale) % 360;
+            /* Mechanical deviation affects shaft, bearings, coupling and wobble */
+            const loadShock = this.clamp(
+              Math.abs((s.loadDemandKW || 0) - (s.pKW || 0)) / 4000,
+              0,
+              1
+            );
+            const mechStress = this.clamp(
+              (slipAbs / 0.2) * 0.3 + droopStress * 0.28 + loadShock * 0.22 + currentStress * 0.2,
+              0,
+              1
+            );
+
+            s.electricalStress = elecStress;
+            s.mechanicalStress = mechStress;
+            s.torsionStress = mechStress;
+            s.bearingStress = this.clamp(mechStress * 0.72 + loadShock * 0.28, 0, 1);
+            s.couplingStress = this.clamp(mechStress * 0.78 + droopStress * 0.22, 0, 1);
+            s.vibrationRatio = this.clamp(mechStress * 0.65 + (slipAbs / 0.2) * 0.2, 0, 1);
+            s.excitationLevel = this.clamp((s.genV || 0) / 13.8, 0, 1.2);
+
+            /* Rotor always rotates. After sync it stays rotating but becomes stable. */
+            const mechDegPerSec = (mechRPM * 360) / 60;
+            s.shaftAngleDeg = ((s.shaftAngleDeg || 0) + mechDegPerSec * dt) % 360;
+
+            /* Mechanical wobble only follows mechanical stress, not pure electrical mismatch */
+            const wobblePx = s.breaker === 'TRIPPED' ? 0 : s.vibrationRatio * 5;
+            const wobbleX = Math.sin(performance.now() * 0.012) * wobblePx;
+            const wobbleY = Math.cos(performance.now() * 0.01) * wobblePx * 0.55;
+
+            rotorAssembly.style.transform = `translate(${wobbleX.toFixed(2)}px, ${wobbleY.toFixed(2)}px) rotate(${s.shaftAngleDeg.toFixed(2)}deg)`;
+
+            disc.classList.toggle('mechanical-high-stress', mechStress > 0.66);
+            disc.classList.toggle('mechanical-coupled', s.breaker === 'CLOSED');
+
+            if (this.els.lockHalo) {
+              this.els.lockHalo.classList.toggle('locked', s.breaker === 'CLOSED');
             }
 
-            s.rotorAngle = ((s.rotorAngle % 360) + 360) % 360;
-            const snap = this.clamp((s.lockSnapTimer || 0) / 0.45, 0, 1);
-            const snapScale = 1 + snap * 0.035;
+            const phaseA = disc.querySelectorAll('.phase-a');
+            const phaseB = disc.querySelectorAll('.phase-b');
+            const phaseC = disc.querySelectorAll('.phase-c');
+            const fieldBand = disc.querySelector('.field-band');
+            const northPole = disc.querySelector('.pole-north');
+            const southPole = disc.querySelector('.pole-south');
+            const shafts = disc.querySelectorAll('.shaft');
+            const bearings = disc.querySelectorAll('.bearing');
+            const coupling = disc.querySelector('.coupling');
 
-            disc.style.transform = `translateZ(0) rotate(${s.rotorAngle.toFixed(3)}deg) scale(${snapScale.toFixed(3)})`;
+            const fieldAlpha = 0.2 + s.excitationLevel * 0.55;
+            const elecHue = 120 - 100 * elecStress;
+            const mechHue = 120 - 120 * mechStress;
 
-            if (snap > 0) {
-              disc.style.boxShadow = `0 0 ${24 + snap * 42}px rgba(49,210,138,.55), 0 0 ${12 + snap * 24}px rgba(49,210,138,.35) inset`;
+            /* Electrical-only response */
+            phaseA.forEach((el) => {
+              el.style.opacity = `${0.18 + elecStress * 0.45}`;
+              el.style.boxShadow = `0 0 ${8 + elecStress * 18}px rgba(246,196,83,${0.18 + elecStress * 0.35})`;
+            });
+            phaseB.forEach((el) => {
+              el.style.opacity = `${0.16 + elecStress * 0.42}`;
+              el.style.boxShadow = `0 0 ${8 + elecStress * 18}px rgba(89,215,255,${0.16 + elecStress * 0.34})`;
+            });
+            phaseC.forEach((el) => {
+              el.style.opacity = `${0.16 + elecStress * 0.4}`;
+              el.style.boxShadow = `0 0 ${8 + elecStress * 18}px rgba(49,210,138,${0.16 + elecStress * 0.32})`;
+            });
+
+            if (fieldBand) {
+              fieldBand.style.borderColor = `hsla(${elecHue}, 90%, 60%, ${fieldAlpha})`;
+              fieldBand.style.boxShadow = `0 0 ${10 + elecStress * 20}px hsla(${elecHue}, 90%, 60%, ${0.1 + elecStress * 0.22})`;
             }
 
-            const hue = 120 - 120 * stress;
-            disc.style.borderColor = `hsl(${hue}, 80%, 50%)`;
+            if (northPole) {
+              northPole.style.boxShadow = `0 0 ${10 + elecStress * 16}px rgba(246,196,83,${0.18 + elecStress * 0.3})`;
+            }
+            if (southPole) {
+              southPole.style.boxShadow = `0 0 ${10 + elecStress * 16}px rgba(89,215,255,${0.18 + elecStress * 0.3})`;
+            }
 
-            if (locked) {
-              disc.classList.add('locked');
-              if (this.els.rotorInfo) {
-                this.els.rotorInfo.textContent = `LOCKED • ${Math.round(stress * 100)}% STRESS`;
+            /* Mechanical-only response */
+            shafts.forEach((el) => {
+              el.style.boxShadow = `0 0 ${6 + mechStress * 18}px hsla(${mechHue}, 90%, 58%, ${0.1 + mechStress * 0.26})`;
+            });
+
+            bearings.forEach((el) => {
+              el.style.boxShadow = `0 0 ${4 + s.bearingStress * 14}px hsla(${mechHue}, 90%, 58%, ${0.08 + s.bearingStress * 0.24})`;
+            });
+
+            if (coupling) {
+              coupling.style.boxShadow = `0 0 ${4 + s.couplingStress * 14}px hsla(${mechHue}, 90%, 58%, ${0.08 + s.couplingStress * 0.24})`;
+            }
+
+            if (this.els.rotorInfo) {
+              if (s.breaker === 'CLOSED') {
+                this.els.rotorInfo.textContent = `SYNC LOCK • rotor turning at ${Math.round(mechRPM)} rpm • mech ${Math.round(mechStress * 100)}% • elec ${Math.round(elecStress * 100)}%`;
+              } else if (s.breaker === 'TRIPPED') {
+                this.els.rotorInfo.textContent = `TRIPPED • residual rotation • review shaft and field stress`;
+              } else {
+                this.els.rotorInfo.textContent = `TRACKING • ${slipAbs.toFixed(3)} Hz slip • phase ${phaseAbs.toFixed(1)}°`;
               }
-            } else {
-              disc.classList.remove('locked');
-              if (this.els.rotorInfo) {
-                this.els.rotorInfo.textContent = `TRACKING • ${Math.abs(s.slipHz).toFixed(3)} Hz slip`;
-              }
             }
 
-            if (this.els.rotorF) {
-              this.els.rotorF.textContent = `${s.genF.toFixed(2)} Hz`;
-            }
+            if (this.els.rotorF) this.els.rotorF.textContent = `${s.genF.toFixed(2)} Hz`;
+            if (this.els.rotorRPM) this.els.rotorRPM.textContent = `${Math.round(mechRPM)} rpm`;
+            if (this.els.rotorSlip) this.els.rotorSlip.textContent = `${slipAbs.toFixed(3)} Hz`;
 
-            if (this.els.rotorRPM) {
-              this.els.rotorRPM.textContent = `${Math.round(s.primeMoverRPM || 0)} rpm`;
-            }
-
-            if (this.els.rotorSlip) {
-              const slip = Math.abs(s.genF - s.gridF);
-              this.els.rotorSlip.textContent = `${slip.toFixed(3)} Hz`;
-            }
-
-            if (this.els.rotorStress) {
-              const stressPct = Math.round(stress * 100);
-              this.els.rotorStress.textContent = `${stressPct}%`;
-              this.els.rotorStress.style.color = `hsl(${hue}, 80%, 60%)`;
+            if (this.els.rotorMode) {
+              this.els.rotorMode.textContent = this.state.machine.mode.replaceAll('_', ' ');
             }
 
             if (this.els.rotorBreakerState) {
               this.els.rotorBreakerState.textContent = s.breaker;
             }
 
-            if (this.els.rotorPhase) {
-              this.els.rotorPhase.textContent = `${Math.abs(this.wrapDeg(s.phaseDeg)).toFixed(1)}°`;
+            if (this.els.rotorElecStress) {
+              const pct = Math.round(elecStress * 100);
+              this.els.rotorElecStress.textContent = `${pct}%`;
+              this.els.rotorElecStress.style.color = `hsl(${120 - 100 * elecStress}, 80%, 60%)`;
+            }
+
+            if (this.els.rotorMechStress) {
+              const pct = Math.round(mechStress * 100);
+              this.els.rotorMechStress.textContent = `${pct}%`;
+              this.els.rotorMechStress.style.color = `hsl(${120 - 120 * mechStress}, 80%, 60%)`;
             }
 
             if (this.els.rotorExciter) {
-              const exciterErr = Math.abs((s.genV || 0) - (s.gridV || 0));
-              this.els.rotorExciter.textContent =
-                exciterErr < 0.08 ? 'STABLE' : exciterErr < 0.25 ? 'CORRECTING' : 'HIGH';
+              const exciterState =
+                s.excitationLevel < 0.82
+                  ? 'WEAK'
+                  : s.excitationLevel < 1.04
+                    ? 'STABLE'
+                    : s.excitationLevel < 1.15
+                      ? 'BOOSTING'
+                      : 'HIGH';
+              this.els.rotorExciter.textContent = exciterState;
+              this.els.rotorExciter.style.color = `hsl(${120 - 100 * elecStress}, 80%, 62%)`;
             }
+
             if (this.els.rotorThermal) {
               this.els.rotorThermal.textContent = `${s.genTempC.toFixed(1)} °C`;
+              this.els.rotorThermal.style.color =
+                s.genTempC > 85 ? 'var(--red)' : s.genTempC > 65 ? 'var(--gold)' : 'var(--text)';
             }
+
             if (this.els.rotorShaft) {
-              const shaft = Math.round(
-                this.clamp(
-                  (Math.abs(s.slipHz || 0) / 0.2) * 60 +
-                    (Math.abs(s.governorDroopHz || 0) / 0.065) * 40,
-                  0,
-                  100
-                )
-              );
-              this.els.rotorShaft.textContent = `${shaft}%`;
-              this.els.rotorShaft.style.color = `hsl(${hue}, 80%, ${shaft > 66 ? '50%' : '70%'})`;
+              const shaftPct = Math.round(s.torsionStress * 100);
+              this.els.rotorShaft.textContent = `${shaftPct}%`;
+              this.els.rotorShaft.style.color = `hsl(${120 - 120 * s.torsionStress}, 80%, 60%)`;
+            }
+
+            if (this.els.rotorBearing) {
+              const bearingPct = Math.round(s.bearingStress * 100);
+              this.els.rotorBearing.textContent = `${bearingPct}%`;
+              this.els.rotorBearing.style.color = `hsl(${120 - 120 * s.bearingStress}, 80%, 60%)`;
+            }
+
+            /* Backward-safe legacy field if still present */
+            if (this.els.rotorPhase) {
+              this.els.rotorPhase.textContent = `${phaseAbs.toFixed(1)}°`;
             }
           },
 
-          /**
-           * drawFluxView()
-           *
-           * Training abstraction showing rotor field, stator pickup, grid reference,
-           * phase angle, slip, flux strength, and stress.
-           * This is not a finite-element electromagnetic model.
-           */
+          // Training view only. Shows field relationship, not a physics-grade machine model.
           drawFluxView() {
             const c = this.els.fluxCanvas;
             const ctx = this.fluxCtx;
@@ -5466,7 +5870,7 @@
             }
             // All clear: close command
             this.dispatch(EVENT.BREAKER_CLOSE_CMD);
-            // record marker for operator close command
+            // Mark the close command on the trend
             this.recordMarker('close_cmd');
             this.state.brkrClosingTimer = 0.12;
             this.state.postCloseHold = 1.2;
@@ -5730,12 +6134,12 @@
                 : '—';
             const guidance = this.getTripGuidance(snap);
             div.innerHTML = `
-        <div><strong>Trip cause:</strong> ${reason}</div>
-        <div><strong>Trip conditions:</strong> ΔV ${dv.toFixed(0)} V, Δf ${df.toFixed(3)} Hz, Δφ ${dphi.toFixed(1)}°, I ${current.toFixed(0)} A</div>
-        <div><strong>Active faults at trip:</strong> ${faultsStr}</div>
-        <div><strong>Scenario:</strong> ${scenarioName}</div>
-        <div style="margin-top:8px"><strong>Recovery guidance:</strong> ${guidance}</div>
-      `;
+                    <div><strong>Trip cause:</strong> ${reason}</div>
+                    <div><strong>Trip conditions:</strong> ΔV ${dv.toFixed(0)} V, Δf ${df.toFixed(3)} Hz, Δφ ${dphi.toFixed(1)}°, I ${current.toFixed(0)} A</div>
+                    <div><strong>Active faults at trip:</strong> ${faultsStr}</div>
+                    <div><strong>Scenario:</strong> ${scenarioName}</div>
+                    <div style="margin-top:8px"><strong>Recovery guidance:</strong> ${guidance}</div>
+                  `;
             panel.style.display = 'block';
           },
 
@@ -6208,16 +6612,16 @@
             }
             // Assemble debrief HTML with explicit result line and appended scorecard
             const debriefHTML = `
-        <strong>Scenario: ${this.state.scenario.id.toUpperCase()}</strong><br>
-        <strong>RESULT: ${resultStr}</strong><br>
-        Objective: ${this.state.scenario.objective}<br>
-        Time to sync: ${this.state.scenario.syncTime.toFixed(1)} s<br>
-        Unsafe attempts: ${this.state.scenario.unsafeAttempts}<br>
-        Trips: ${this.state.scenario.trips}<br>
-        <span style="color:var(--green);font-weight:700">FINAL SCORE: ${Math.round(this.state.scenario.score)} / 100 · GRADE ${this.state.scenario.finalGrade}</span><br>
-        ${scorecardHTML}
-        ${scenarioContent}
-      `;
+                    <strong>Scenario: ${this.state.scenario.id.toUpperCase()}</strong><br>
+                    <strong>RESULT: ${resultStr}</strong><br>
+                    Objective: ${this.state.scenario.objective}<br>
+                    Time to sync: ${this.state.scenario.syncTime.toFixed(1)} s<br>
+                    Unsafe attempts: ${this.state.scenario.unsafeAttempts}<br>
+                    Trips: ${this.state.scenario.trips}<br>
+                    <span style="color:var(--green);font-weight:700">FINAL SCORE: ${Math.round(this.state.scenario.score)} / 100 · GRADE ${this.state.scenario.finalGrade}</span><br>
+                    ${scorecardHTML}
+                    ${scenarioContent}
+                  `;
             document.getElementById('debriefContent').innerHTML = debriefHTML;
             document.getElementById('debriefPanel').style.display = 'block';
             // record marker for scenario completion
@@ -6439,6 +6843,24 @@
                 Ia += ocDroop + ocLoad;
               }
               s.currentA = Ia;
+
+              if (
+                s.scenario &&
+                s.scenario.active &&
+                s.breaker === 'CLOSED' &&
+                s.scenario.id !== 'overcurrent'
+              ) {
+                const stable =
+                  Math.abs(s.slipHz || 0) < 0.005 &&
+                  Math.abs(this.wrapDeg(s.phaseDeg || 0)) < 1.0 &&
+                  s.currentA < 1400 &&
+                  s.breaker === 'CLOSED';
+
+                s.scenario.stableAfterCloseSec = stable
+                  ? (s.scenario.stableAfterCloseSec || 0) + dt
+                  : 0;
+              }
+
               if (s.scenario && s.scenario.active && s.scenario.id === 'overcurrent') {
                 const sc = s.scenario;
                 const overcurrentStable =
@@ -6731,10 +7153,10 @@
               blockerHTML = `<div style="font-size:11px;color:var(--muted);margin-top:4px">${blocker}</div>`;
             }
             this.els.guidancePanel.innerHTML = `
-        <div><span style="color:var(--gold)">NEXT ACTION → </span>${nextAction}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px">${why}</div>
-        ${blockerHTML}
-      `;
+                    <div><span style="color:var(--gold)">NEXT ACTION → </span>${nextAction}</div>
+                    <div style="font-size:12px;color:var(--muted);margin-top:4px">${why}</div>
+                    ${blockerHTML}
+                  `;
             this.updateBreakerButton();
 
             this.updateTelemetryUI();
