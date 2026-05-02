@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an improvement for ARCUS Systems / PHOENIX Gen
+about: Suggest an improvement
 title: "[FEATURE] "
 labels: enhancement
 assignees: ""
@@ -8,51 +8,35 @@ assignees: ""
 
 ## Summary
 
-Describe the idea in 1 to 3 sentences.
+What do you want added or improved?
 
 ## Module
 
 - [ ] PHOENIX Gen
 - [ ] ARCUS Grid Lab
-- [ ] ARCUS Systems (platform-wide)
-- [ ] Other / unsure
+- [ ] ARCUS Systems
+- [ ] not sure
 
-## Type of Request
+## Type
 
-- [ ] Training realism
-- [ ] UI / UX improvement
-- [ ] New scenario
-- [ ] Guidance / debrief improvement
-- [ ] Analysis / replay
-- [ ] Rotor / magnetic teaching visual
-- [ ] Documentation / tutorial
-- [ ] Mobile usability
-- [ ] Architecture / platform
-- [ ] Other
+- [ ] training realism
+- [ ] UI / UX
+- [ ] new drill
+- [ ] analysis / replay
+- [ ] rotor / machine visual
+- [ ] docs / tutorial
+- [ ] mobile usability
+- [ ] platform structure
+- [ ] other
 
-## Problem It Solves
+## Problem it solves
 
-What problem or limitation does this improve?
+What gets better if this exists?
 
-## Proposed Change
+## Proposed change
 
-Describe the change you want.
+Describe the change.
 
-## Why It Matters
+## Tradeoffs or risks
 
-Why would this make training, realism, clarity, or usability better?
-
-## Scope
-
-- [ ] Small improvement
-- [ ] Medium feature
-- [ ] Major module change
-- [ ] Unsure
-
-## Risks / Tradeoffs
-
-Any downside, complexity, or confusion this could introduce?
-
-## Additional Notes
-
-Add examples, references, or mockup ideas if helpful.
+Anything this might complicate?
