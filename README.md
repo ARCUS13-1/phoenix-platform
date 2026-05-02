@@ -1,6 +1,6 @@
 # ARCUS Systems
 
-**PHOENIX Gen** Generator to grid synchronization training simulator.
+**PHOENIX Gen** is a generator to grid synchronization training simulator.
 
 It is a browser-based training simulator for learning how a generator is safely matched and connected to the power grid.
 
