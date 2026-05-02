@@ -56,6 +56,27 @@ This improves training clarity by separating **mechanical stress** from **electr
 - Rotor behavior now trains as a continuously rotating machine rather than a simple spinning icon
 - After sync, the rotor remains in motion and stabilizes at synchronous speed instead of appearing to stop
 - Review flow was expanded so logs, replay, markers, and timing views support the training story more clearly
+  
+#### Timing Studio Expansion
+The Timing Studio was expanded beyond the original basic sync / trip / fault views.
+
+New timing presets now cover a wider range of training and review states, including:
+
+- quickstart
+- vsag
+- phaseerr
+- overcurrent
+- stuck
+- combined
+- breaker close
+- unsafe close
+- fault clear / recover
+- sync loss
+- overload recovery
+- manual trim
+- telemetry overlay
+
+This makes the Timing Studio more useful as a training and review tool instead of just a small supporting utility. It now helps show drill flow, event order, recovery steps, and timing logic in a way that is easier to review after a run.
 
 #### Summary
 v9.5 established the core simulator.
