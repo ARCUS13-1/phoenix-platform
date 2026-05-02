@@ -16,26 +16,39 @@ Also shifted the public direction toward:
 - `phoenix_v10_dev.html` remains the active sandbox
 - `phoenix_v9_5_beta_locked.html` retained as the prior beta snapshot
 
-### Added in v10
+### v10 Training Expansion Highlights
+
+v10 keeps the core simulator from v9.5, but adds a much stronger training layer around it.
+
+#### Added
 - stress meter
 - progression and unlocks
 - playbook / briefing
-- instructor shell
-- rotor visual tab
-- mechanical rotor / stator training view
-- magnetic field / sync training view
+- instructor mode shell
 - expanded timing presets
+- stronger replay and review tools
+- rotor visual tab with:
+  - Mechanical Rotor / Stator View
+  - Magnetic Field / Sync View
 
-### Preserved from v9.5
-- state-machine sync flow
-- dwell-time sync gating
-- breaker truth
-- six drill scenarios
-- trip summary / debrief flow
-- overcurrent correction behavior
-- timing studio
-- telemetry overlay
-- SOE logging
+#### Rotor Training Upgrade
+The rotor tab now teaches two different parts of the machine on purpose.
+
+The **mechanical view** is there to show machine behavior like shaft load, bearing stress, coupling stress, vibration, stability, and lock quality.
+
+The **magnetic view** is there to show the field relationship like slip, phase error, stator pickup, rotor field, and flux coupling.
+
+That split matters because mechanical stress and electrical stress are not the same thing, and the sim now teaches that better.
+
+#### Behavior Changes
+- the rotor now behaves more like a real continuously rotating machine
+- after sync, it stays rotating and stabilizes at synchronous speed
+- replay, markers, timing, and review tools now support the training flow better
+
+#### Summary
+v9.5 gave the project a solid sync simulator.
+
+v10 keeps that core and adds a better training shell, better review flow, and better machine/field teaching.
 
 ### Changed
 - v10 is now the live training shell
