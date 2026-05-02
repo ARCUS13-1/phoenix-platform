@@ -4,8 +4,6 @@
 
 It is a browser-based training simulator for learning how a generator is safely matched and connected to the power grid.
 
-![PHOENIX Gen screenshot](docs/images/phoenix-gen-hero.png)
-
 ## Live Demo
 
 **Try it here:**  
