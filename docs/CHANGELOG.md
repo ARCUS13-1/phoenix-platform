@@ -18,37 +18,49 @@ Also shifted the public direction toward:
 
 ### v10 Training Expansion Highlights
 
-v10 keeps the core simulator from v9.5, but adds a much stronger training layer around it.
+v10 keeps the validated v9.5 sync simulator core, but expands the training layer around it.
 
 #### Added
-- stress meter
-- progression and unlocks
-- playbook / briefing
-- instructor mode shell
-- expanded timing presets
-- stronger replay and review tools
-- rotor visual tab with:
+- Stress meter for faster operator awareness of unstable machine conditions
+- Progression and unlocks view
+- Playbook / briefing view
+- Instructor mode shell
+- Expanded timing presets tied more closely to drill and event flow
+- Replay filtering and review improvements
+- Rotor visual tab with two distinct teaching views:
   - Mechanical Rotor / Stator View
   - Magnetic Field / Sync View
 
-#### Rotor Training Upgrade
-The rotor tab now teaches two different parts of the machine on purpose.
+#### Rotor Training Changes
+The rotor visual was expanded to teach two different things on purpose:
 
-The **mechanical view** is there to show machine behavior like shaft load, bearing stress, coupling stress, vibration, stability, and lock quality.
+- The **mechanical view** focuses on physical machine behavior:
+  - rotor speed
+  - shaft stress
+  - bearing load
+  - coupling stress
+  - vibration / stability
+  - synchronous lock quality
 
-The **magnetic view** is there to show the field relationship like slip, phase error, stator pickup, rotor field, and flux coupling.
+- The **magnetic view** focuses on the electrical relationship:
+  - rotor field
+  - stator pickup zones
+  - slip
+  - phase error
+  - flux coupling
+  - sync behavior
 
-That split matters because mechanical stress and electrical stress are not the same thing, and the sim now teaches that better.
+This improves training clarity by separating **mechanical stress** from **electrical stress** instead of blending them together.
 
-#### Behavior Changes
-- the rotor now behaves more like a real continuously rotating machine
-- after sync, it stays rotating and stabilizes at synchronous speed
-- replay, markers, timing, and review tools now support the training flow better
+#### Behavioral Improvements
+- Rotor behavior now trains as a continuously rotating machine rather than a simple spinning icon
+- After sync, the rotor remains in motion and stabilizes at synchronous speed instead of appearing to stop
+- Review flow was expanded so logs, replay, markers, and timing views support the training story more clearly
 
 #### Summary
-v9.5 gave the project a solid sync simulator.
+v9.5 established the core simulator.
 
-v10 keeps that core and adds a better training shell, better review flow, and better machine/field teaching.
+v10 keeps that core intact and adds a stronger training shell, better review flow, and deeper machine/field teaching through the new rotor views.
 
 ### Changed
 - v10 is now the live training shell
