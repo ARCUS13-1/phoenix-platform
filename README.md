@@ -1,57 +1,51 @@
 # ARCUS Systems
 
-ARCUS Systems is the umbrella.
+**PHOENIX Gen** is the first live ARCUS Systems module.
 
-The first live module is **PHOENIX Gen**.
+It is a browser-based training simulator for learning how a generator is safely matched and connected to the power grid.
 
-PHOENIX Gen is a browser-based training simulator for learning how a generator is safely matched and connected to the grid.
+![PHOENIX Gen screenshot](docs/images/phoenix-gen-hero.png)
 
 ## Live Demo
 
+**Try it here:**  
 https://arcus13-1.github.io/phoenix-platform/
 
-## What PHOENIX Gen Does
+## What PHOENIX Gen Teaches
 
-It focuses on:
+PHOENIX Gen is built around the real training problem:
 
-- grid ↔ generator synchronization
-- synchroscope training
-- breaker close / trip / reset logic
-- fault drills and recovery
-- scoring and debriefs
-- event logging
-- timing view
-- telemetry overlay
-- rotor / machine teaching visuals
+- matching generator voltage to the grid
+- matching generator frequency to the grid
+- watching phase drift and synchroscope timing
+- closing the breaker at the right moment
+- understanding what happens when the close is unsafe
+- recovering from fault drills and reviewing the event afterward
 
-## Current Status
+It is meant to make synchronization, breaker timing, fault response, and machine behavior easier to understand in a direct browser-based simulator.
 
-Public beta.
+## What’s New in v10
 
-This build is for:
+v10 keeps the core sync simulator from v9.5 and adds a stronger training layer around it.
 
-- real device testing
-- drill validation
-- UI clarity
-- debrief / guidance trust
-- training realism feedback
-- bug finding
+### Added / expanded
+- stress meter
+- progression and unlocks
+- playbook / briefing
+- instructor shell
+- expanded timing presets
+- rotor visual tab
+- mechanical rotor / stator training view
+- magnetic field / sync training view
+- stronger replay and review flow
 
-## Current Structure
+### Rotor training upgrade
+The rotor tab now teaches two different things on purpose:
 
-- **ARCUS Systems** = parent umbrella
-- **PHOENIX Gen** = current live module
-- **ARCUS Grid Lab** = next planned module
+- **Mechanical view** → shaft, bearings, coupling, vibration, stability, lock quality
+- **Magnetic view** → rotor field, stator pickup, slip, phase error, field coupling
 
-## Runtime Files
-
-| File | Role |
-|---|---|
-| `index.html` | live public runtime |
-| `phoenix_v10_dev.html` | active development sandbox |
-| `phoenix_v10_promoted_locked.html` | current rollback snapshot |
-| `phoenix_v9_5_beta_locked.html` | prior beta snapshot |
-| `phoenix_v8_baseline_locked.html` | historical baseline |
+That split helps separate **mechanical stress** from **electrical stress** instead of blending them together.
 
 ## Quick Start
 
@@ -73,6 +67,12 @@ This build is for:
 - `stuck`
 - `combined`
 
+## Platform Structure
+
+- **ARCUS Systems** = parent umbrella
+- **PHOENIX Gen** = current live module
+- **ARCUS Grid Lab** = next planned module
+
 ## Docs
 
 - [User Guide](docs/USER_GUIDE.md)
@@ -86,9 +86,3 @@ This build is for:
 Use **Issues** for bugs, contradictions, or broken behavior.
 
 Use **Discussions** for realism feedback, workflow comments, and ideas.
-
-## Why this exists
-
-The goal is simple:
-
-Make synchronization, breaker timing, fault response, and event review easier to learn through a direct browser-based simulator.
