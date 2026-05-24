@@ -1,8 +1,17 @@
 <!--
-PHOENIX Gen v10 dev
+ PHOENIX GEN v10 DEV
+ ARCUS Systems single-file development sandbox for grid ↔ generator synchronizing training.
 
-Work here first.
-Promote to index.html only after validation.
+ Current implemented areas:
+ - simulator control and state machine
+ - grid / generator start-stop flow
+ - synchroscope and sync gating
+ - breaker close / open / trip / reset
+ - fault drills and debrief
+ - trend, SOE log, timing studio
+ - telemetry overlay fallback
+ - stress meter and rotor training visual
+ - progression, playbook, instructor shell
 
  Partial / stubbed areas:
  - relay lab
@@ -17,6 +26,7 @@ Promote to index.html only after validation.
   <head>
     <meta charset="utf-8" />
     <title>PHOENIX GEN v10 — ARCUS Systems Operator Training</title>
+    <link rel="icon" href="data:," />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <style>
       :root {
@@ -47,7 +57,7 @@ Promote to index.html only after validation.
           Arial,
           sans-serif;
 
-        /* Shared shell colors and glow values */
+        /* Visual convergence design tokens */
         --bg-0: #060b12;
         --bg-1: #0b1320;
         --shell: #101a2a;
@@ -522,7 +532,12 @@ Promote to index.html only after validation.
       }
 
       /*
-      /* Mobile cleanup: keep the rail scrollable and controls easy to hit */
+       * === UI corrections for mobile trust and navigation ===
+       * These overrides adjust the mission strip, tab bar, chips, replay controls
+       * and container heights to improve usability on phones. By adding them
+       * toward the end of the stylesheet, they override earlier definitions
+       * without rewriting the original code.
+       */
       /* Mission strip should not wrap lines; enable horizontal scrolling */
       .mission-strip {
         flex-wrap: nowrap;
@@ -535,6 +550,8 @@ Promote to index.html only after validation.
       .mission-strip::-webkit-scrollbar {
         display: none;
       }
+
+      /* Removed specific horizontal scrolling behaviour for .tabs and flex-basis prevention. Consolidated definitions will handle wrapping and scroll behaviour. */
 
       /* Bigger filter chips for better tap targets */
       .log-filters .chip {
@@ -555,11 +572,16 @@ Promote to index.html only after validation.
         border-radius: 3px;
       }
 
-      .replay-bar input[type='range']::-webkit-slider-thumb {
-        width: 16px;
-        height: 16px;
-        margin-top: -5px;
-      }
+      /* Duplicate .app height definition removed; consolidated layout defined later */
+      /* .app height handled in consolidated definitions */
+
+      /* Duplicate body overflow rule removed; handled by consolidated definition */
+
+      /* Duplicate .view scroll behaviour removed; handled by consolidated definition */
+
+      /* Removed earlier responsive metrics rules; unified in consolidated definitions */
+
+      /* Duplicate tab bar and tab sizing rules removed; handled by consolidated definition */
 
       /* Hide short or full labels depending on viewport width */
       .tab .short-label {
@@ -604,6 +626,7 @@ Promote to index.html only after validation.
         }
       }
 
+      /* Duplicate .app row structure removed; consolidated layout defined later */
       .tiny .k {
         font-size: 10px;
         color: var(--muted);
@@ -892,6 +915,231 @@ Promote to index.html only after validation.
         background: rgba(89, 215, 255, 0.08);
         box-shadow: 0 0 12px rgba(89, 215, 255, 0.2);
       }
+      /* -----------------------------------------------------------------------
+         PHOENIX RING 3A — PHASOR INSIGHT PANEL
+         Purpose:
+         - Show grid/gen voltage phasor relationship
+         - Reinforce ΔV / Δf / Δφ learning
+         - Read-only training visual
+         - No physics or breaker logic changes
+      ----------------------------------------------------------------------- */
+
+      .phasor-panel {
+        margin-top: 12px;
+        padding: 12px;
+        border: 1px solid rgba(89, 215, 255, 0.22);
+        border-radius: 18px;
+        background:
+          radial-gradient(circle at 50% 40%, rgba(89, 215, 255, 0.08), transparent 62%),
+          linear-gradient(180deg, rgba(16, 28, 45, 0.94), rgba(10, 18, 31, 0.96));
+        box-shadow: var(--shadow);
+      }
+
+      .phasor-panel h3 {
+        margin: 0 0 8px;
+        font-size: 11px;
+        line-height: 1;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--cyan);
+        font-weight: 900;
+      }
+
+      .phasor-wrap {
+        display: grid;
+        grid-template-columns: minmax(180px, 260px) 1fr;
+        gap: 12px;
+        align-items: center;
+      }
+
+      #phasorCanvas {
+        width: 100%;
+        max-width: 260px;
+        height: auto;
+        display: block;
+        border: 1px solid rgba(120, 180, 255, 0.18);
+        border-radius: 16px;
+        background: #08101c;
+      }
+
+      .phasor-readouts {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .phasor-readouts .tiny {
+        min-width: 0;
+      }
+
+      .phasor-status {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(120, 180, 255, 0.16);
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.35;
+      }
+
+      .phasor-status.ready {
+        color: var(--green);
+        border-color: rgba(49, 210, 138, 0.34);
+        background: rgba(49, 210, 138, 0.08);
+      }
+
+      .phasor-status.blocked {
+        color: var(--gold);
+        border-color: rgba(246, 196, 83, 0.34);
+        background: rgba(246, 196, 83, 0.08);
+      }
+
+      .phasor-status.trip {
+        color: var(--red);
+        border-color: rgba(255, 107, 107, 0.38);
+        background: rgba(255, 107, 107, 0.08);
+      }
+
+      @media (max-width: 700px) {
+        .phasor-wrap {
+          grid-template-columns: 1fr;
+        }
+
+        #phasorCanvas {
+          max-width: 100%;
+        }
+
+        .phasor-readouts {
+          grid-template-columns: 1fr;
+        }
+      }
+      /* -----------------------------------------------------------------------
+   PHOENIX v10.1 CONCEPT — OPERATOR CUE LAYER
+   Purpose:
+   - One visual step rail for operator position
+   - One temporary countdown overlay for major transitions
+   - No physics changes
+   - No sync-safety changes
+------------------------------------------------------------------------ */
+
+      .operator-step-rail {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .operator-step {
+        position: relative;
+        min-height: 46px;
+        padding: 8px 6px;
+        border-radius: 12px;
+        border: 1px solid rgba(120, 180, 255, 0.16);
+        background: rgba(255, 255, 255, 0.025);
+        color: var(--muted);
+        text-align: center;
+        overflow: hidden;
+      }
+
+      .operator-step .step-k {
+        display: block;
+        font-size: 9px;
+        line-height: 1;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 900;
+      }
+
+      .operator-step .step-v {
+        display: block;
+        margin-top: 5px;
+        font-size: 11px;
+        line-height: 1.1;
+        font-weight: 800;
+      }
+
+      .operator-step.active {
+        color: var(--cyan);
+        border-color: rgba(89, 215, 255, 0.45);
+        box-shadow: 0 0 16px rgba(89, 215, 255, 0.14);
+      }
+
+      .operator-step.complete {
+        color: var(--green);
+        border-color: rgba(49, 210, 138, 0.34);
+      }
+
+      .operator-step.blocked {
+        color: var(--gold);
+        border-color: rgba(246, 196, 83, 0.42);
+      }
+
+      .operator-step.faulted {
+        color: var(--red);
+        border-color: rgba(255, 107, 107, 0.45);
+        box-shadow: 0 0 18px rgba(255, 107, 107, 0.12);
+      }
+
+      @media (max-width: 700px) {
+        .operator-step-rail {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+
+      .mission-count-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: none;
+        place-items: center;
+        background: rgba(3, 8, 15, 0.58);
+        -webkit-backdrop-filter: blur(4px);
+        backdrop-filter: blur(4px);
+        pointer-events: none;
+      }
+
+      .mission-count-overlay.active {
+        display: grid;
+      }
+
+      .mission-count-stack {
+        text-align: center;
+      }
+
+      .mission-count-number {
+        font-size: clamp(72px, 18vw, 220px);
+        font-weight: 950;
+        line-height: 0.9;
+        color: var(--cyan);
+        text-shadow: 0 0 28px rgba(89, 215, 255, 0.8);
+        animation: countPop 0.82s ease both;
+      }
+
+      .mission-count-label {
+        margin-top: 14px;
+        font-size: clamp(16px, 4vw, 38px);
+        font-weight: 900;
+        color: var(--gold);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      @keyframes countPop {
+        0% {
+          transform: scale(0.55);
+          opacity: 0;
+        }
+
+        35% {
+          transform: scale(1.18);
+          opacity: 1;
+        }
+
+        100% {
+          transform: scale(0.92);
+          opacity: 0;
+        }
+      }
 
       .scenario-row {
         display: flex;
@@ -935,7 +1183,12 @@ Promote to index.html only after validation.
         }
       }
 
-      /* Main layout rules. Keep these as the final authority for shell sizing and tab flow. */
+      /* -------------------------------------------------------------------------
+         Consolidated layout definitions for body, app, metrics, tabs, tab, view,
+         sync-dock and scope-meta. These unify multiple earlier rules and provide
+         responsive behaviour, particularly for mobile phones. Do not duplicate
+         these definitions elsewhere.
+      ------------------------------------------------------------------------- */
       body {
         margin: 0;
         height: 100%;
@@ -1093,7 +1346,9 @@ Promote to index.html only after validation.
         /* On phones, the scope-meta controls should stack in 2 columns rather than 4 */
       }
 
-      /* Shell polish */
+      /* -------------------------------------------------------------------------*/
+      /* VISUAL CONVERGENCE STYLES */
+      /* Upgrade shell header */
       .top {
         border-bottom: 1px solid var(--line-strong);
         background: linear-gradient(180deg, rgba(4, 8, 14, 0.96), rgba(9, 16, 28, 0.94));
@@ -2010,7 +2265,7 @@ Promote to index.html only after validation.
         }
       }
 
-      /* Header alignment */
+      /* === Final Header Alignment Pass === */
       .top {
         display: flex;
         align-items: flex-start;
@@ -2191,7 +2446,7 @@ Promote to index.html only after validation.
         }
       }
 
-      /* UI polish overrides */
+      /* === PHOENIX V10 FINAL UI HARDENING OVERRIDES === */
 
       /* Header cleanup */
       .top {
@@ -2330,7 +2585,7 @@ Promote to index.html only after validation.
         }
       }
 
-      /* Overflow and mobile guardrails */
+      /* === PHOENIX V10 FINAL OVERFLOW / MOBILE HARDENING === */
 
       html,
       body {
@@ -2422,7 +2677,7 @@ Promote to index.html only after validation.
         }
       }
 
-      /* Header and doctrine strip */
+      /* === PHOENIX V10 HEADER / DOCTRINE FINAL CLEANUP === */
 
       .top {
         min-height: 104px;
@@ -2547,7 +2802,7 @@ Promote to index.html only after validation.
         }
       }
 
-      /* Tab rail sizing */
+      /* === PHOENIX V10 TAB RAIL FINAL LOCK === */
 
       /* Keep only the TOP navigation tabs as compact buttons */
       nav.tabs {
@@ -2612,7 +2867,7 @@ Promote to index.html only after validation.
         }
       }
 
-      /* View spacing */
+      /* === PHOENIX V10 VIEW SPACING LOCK === */
 
       main.view {
         padding-top: 14px !important;
@@ -2659,7 +2914,7 @@ Promote to index.html only after validation.
         }
       }
 
-      /* One-page scroll flow */
+      /* === PHOENIX V10 FINAL VIEW FLOW LOCK === */
 
       /* Use one page scroll. Prevent active tabs from creating internal scroll deserts. */
       html,
@@ -2750,7 +3005,7 @@ Promote to index.html only after validation.
         }
       }
 
-      /* Sync dock spacing */
+      /* === PHOENIX V10 SYNC DOCK STICKY SAFE LOCK === */
 
       .sync-dock {
         position: sticky;
@@ -2853,7 +3108,7 @@ Promote to index.html only after validation.
       <main id="sim" class="view active">
         <div class="desktop-two">
           <div class="stack">
-            <section class="card panel">
+            <section class="card panel sync-panel">
               <h2>Simulation Control</h2>
               <div class="control-groups">
                 <div class="control-group">
@@ -2914,6 +3169,33 @@ Promote to index.html only after validation.
             <section class="card panel">
               <h2>OPERATOR GUIDANCE • NEXT ACTION</h2>
               <div id="guidancePanel" class="guidance">Waiting for simulation start…</div>
+
+              <div id="operatorStepRail" class="operator-step-rail" aria-label="Operator step rail">
+                <div class="operator-step" data-step="SIM">
+                  <span class="step-k">01</span>
+                  <span class="step-v">SIM</span>
+                </div>
+                <div class="operator-step" data-step="GRID">
+                  <span class="step-k">02</span>
+                  <span class="step-v">GRID</span>
+                </div>
+                <div class="operator-step" data-step="GEN">
+                  <span class="step-k">03</span>
+                  <span class="step-v">GEN</span>
+                </div>
+                <div class="operator-step" data-step="MATCH">
+                  <span class="step-k">04</span>
+                  <span class="step-v">MATCH</span>
+                </div>
+                <div class="operator-step" data-step="CLOSE">
+                  <span class="step-k">05</span>
+                  <span class="step-v">CLOSE</span>
+                </div>
+                <div class="operator-step" data-step="REVIEW">
+                  <span class="step-k">06</span>
+                  <span class="step-v">REVIEW</span>
+                </div>
+              </div>
             </section>
 
             <section class="card panel" id="debriefPanel" style="display: none">
@@ -3054,12 +3336,16 @@ Promote to index.html only after validation.
                   <div class="k">Stable</div>
                   <div id="scStable" class="v">—</div>
                 </div>
+                <div class="tiny">
+                  <div class="k">Remaining</div>
+                  <div id="scRemaining" class="v">—</div>
+                </div>
               </div>
             </section>
           </div>
 
           <div class="stack">
-            <section class="card panel sync-panel">
+            <section class="card panel">
               <h2>Synchroscope</h2>
               <div class="scope-wrap"><canvas id="scope" width="420" height="420"></canvas></div>
               <div class="sync-band">
@@ -3083,6 +3369,50 @@ Promote to index.html only after validation.
                 <div class="tiny">
                   <div class="k">Temp</div>
                   <div id="kvTemp" class="v">25.0 °C</div>
+                </div>
+              </div>
+              <div class="phasor-panel" aria-label="Phasor insight training panel">
+                <h3>Voltage Phasor Insight</h3>
+                <div class="phasor-wrap">
+                  <canvas
+                    id="phasorCanvas"
+                    width="260"
+                    height="220"
+                    aria-label="Grid and generator voltage phasor display"
+                  ></canvas>
+
+                  <div>
+                    <div class="phasor-readouts">
+                      <div class="tiny">
+                        <div class="k">Grid Vector</div>
+                        <div id="phasorGridRead" class="v">0.00 kV ∠ 0.0°</div>
+                      </div>
+                      <div class="tiny">
+                        <div class="k">Gen Vector</div>
+                        <div id="phasorGenRead" class="v">0.00 kV ∠ 0.0°</div>
+                      </div>
+                      <div class="tiny">
+                        <div class="k">Phase Gap</div>
+                        <div id="phasorPhaseRead" class="v">0.0°</div>
+                      </div>
+                      <div class="tiny">
+                        <div class="k">Sync Truth</div>
+                        <div id="phasorCloseRead" class="v">BLOCKED</div>
+                      </div>
+                      <div class="tiny">
+                        <div class="k">Power Flow</div>
+                        <div id="phasorFlowRead" class="v">OPEN CIRCUIT</div>
+                      </div>
+                    </div>
+
+                    <div id="phasorStatus" class="phasor-status blocked">
+                      Waiting for grid and generator reference.
+                    </div>
+                    <div class="hint" style="margin-top: 8px">
+                      Voltage phasors show magnitude and angle alignment. Current and power flow are
+                      only meaningful after the breaker is closed.
+                    </div>
+                  </div>
                 </div>
               </div>
               <!-- Scope status indicator: reflects the high-level machine mode without altering behavior -->
@@ -3521,6 +3851,23 @@ Promote to index.html only after validation.
                     >Chaos / Distraction Mode</label
                   >
                 </div>
+                <div class="checkbox-group">
+                  <input type="checkbox" id="audioCueToggle" checked /><label for="audioCueToggle"
+                    >Audio Cues</label
+                  >
+                </div>
+
+                <div class="checkbox-group">
+                  <input type="checkbox" id="hapticCueToggle" checked /><label for="hapticCueToggle"
+                    >Phone Haptics</label
+                  >
+                </div>
+
+                <div class="checkbox-group">
+                  <input type="checkbox" id="motionCueToggle" checked /><label for="motionCueToggle"
+                    >Countdown / Motion Cues</label
+                  >
+                </div>
               </div>
               <div class="row" style="margin-top: 6px">
                 <button class="btn" id="btnSavePreset">Save Preset</button>
@@ -3559,11 +3906,16 @@ Promote to index.html only after validation.
         </div>
       </main>
 
+      <!-- PHOENIX v10.1 CONCEPT — temporary mission countdown overlay -->
+      <div id="missionCountOverlay" class="mission-count-overlay" aria-hidden="true">
+        <div class="mission-count-stack">
+          <div id="missionCountNumber" class="mission-count-number">3</div>
+          <div id="missionCountLabel" class="mission-count-label">MISSION START</div>
+        </div>
+      </div>
+
       <footer class="footer">
-        <span>ARCUS Systems · PHOENIX GEN v10 Dev · Operator Training Platform</span>
-        <span style="opacity: 0.82"
-          >Visual notice: motion, pulsing, and flashing cues are used for training.</span
-        >
+        <span>ARCUS Systems · PHOENIX GEN v10 · Operator Training Platform</span>
         <span id="clockText">--:--:--.---</span>
       </footer>
     </div>
@@ -3771,7 +4123,7 @@ Promote to index.html only after validation.
             injectCondition: (s) => s.gridHealthy && !s.genStarted,
             faultIds: ['V-SAG'],
             maxDurationSec: 180,
-            // Training rule: ride through the sag, do not clear it first
+            // Scenario philosophy: operate through the fault — do not clear V-SAG
             type: 'OPERATE_THROUGH'
           },
           phaseerr: {
@@ -3928,6 +4280,8 @@ Promote to index.html only after validation.
             sKVA: 0,
             pf: 1,
             loadDemandKW: 4200,
+            lastLoadLogKW: null,
+            lastLoadLogAt: 0,
             governorDroopHz: 0,
             genTempC: 25,
             teleMode: 'Demo',
@@ -3957,7 +4311,14 @@ Promote to index.html only after validation.
             syncReadyTimer: 0,
             syncLostTimer: 0,
 
-            // Training shell state: progression, unlocks, challenge mode, rotor state
+            /**
+             * Horizon concept additions: progression, challenge and rotor state
+             * rotorAngle: current rotation angle of rotor disc (deg)
+             * challengeMode: tighter sync & trip thresholds when enabled
+             * totalScore: accumulated score across sessions
+             * unlocks: map of unlocked modules
+             * rank: operator tier based on total score
+             */
             rotorAngle: 0,
             poleCount: 4,
             primeMoverRPM: 0,
@@ -3995,6 +4356,24 @@ Promote to index.html only after validation.
             }
           };
         }
+
+        /**
+         * PHOENIX v10.1 CONCEPT — OPERATOR CUE RUNTIME
+         *
+         * This runtime object lives outside the simulator physics.
+         * It stores user cue preferences and transition memory.
+         * It must never change sync eligibility, breaker logic, fault logic, or scenario scoring.
+         */
+        const operatorCueRuntime = {
+          audioEnabled: true,
+          hapticsEnabled: true,
+          motionEnabled: true,
+          audioCtx: null,
+          lastCueAt: 0,
+          lastMode: MODE.OFFLINE,
+          lastBreaker: 'OPEN',
+          wasSyncReady: false
+        };
 
         function machineResetState(prev) {
           const next = createInitialState();
@@ -4087,7 +4466,7 @@ Promote to index.html only after validation.
 
         const app = {
           state: createInitialState(),
-          // Extra training tabs
+          // Extend base tabs with concept views: playbook, progression, rotor, instructor
           tabs: [
             'sim',
             'analysis',
@@ -4105,6 +4484,12 @@ Promote to index.html only after validation.
             this.cache();
             this.buildTabs();
             this.bind();
+            if (typeof this.bindOperatorCueControls === 'function') {
+              this.bindOperatorCueControls();
+            }
+            if (typeof this.updateOperatorCueLayer === 'function') {
+              this.updateOperatorCueLayer();
+            }
             // Load progression data (best scores, total score, unlocks, rank)
             this.loadProgression();
             // Build static views before simulation starts
@@ -4178,7 +4563,17 @@ Promote to index.html only after validation.
               'scElapsed',
               'scType',
               'scStable',
+              'scRemaining',
               'scopeStatus',
+
+              // Ring 3A phasor insight panel
+              'phasorCanvas',
+              'phasorGridRead',
+              'phasorGenRead',
+              'phasorPhaseRead',
+              'phasorCloseRead',
+              'phasorFlowRead',
+              'phasorStatus',
 
               // Horizon concept elements
               'progressSummary',
@@ -4238,11 +4633,12 @@ Promote to index.html only after validation.
             this.scopeCtx = this.els.scope.getContext('2d');
             this.trendCtx = this.els.trend.getContext('2d');
             this.fluxCtx = this.els.fluxCanvas ? this.els.fluxCanvas.getContext('2d') : null;
+            this.phasorCtx = this.els.phasorCanvas ? this.els.phasorCanvas.getContext('2d') : null;
           },
           buildTabs() {
             const nav = document.getElementById('tabs');
             nav.innerHTML = '';
-            // Full and short tab labels
+            // Full and short names for tabs; short names show on narrow screens
             const names = {
               sim: 'Grid Simulator',
               analysis: 'Analysis & Logging',
@@ -4314,7 +4710,9 @@ Promote to index.html only after validation.
             on('btnLoadPreset', () => this.applyPreset(this.els.timingPreset.value));
             on('btnRenderTiming', () => this.renderTiming());
             on('btnRefreshTelemetry', () => this.refreshTelemetry());
-            on('btnLoadScenario', () => this.loadScenario());
+            on('btnLoadScenario', () => {
+              this.showMissionCountdown('START DRILL', 3, () => this.loadScenario());
+            });
             this.els.govSlider.addEventListener('input', (e) => {
               this.state.govSet = parseFloat(e.target.value);
               this.els.govRead.textContent = this.state.govSet.toFixed(2) + ' Hz';
@@ -4386,6 +4784,35 @@ Promote to index.html only after validation.
               this.els.replaySlider.addEventListener('input', (e) =>
                 this.replaySeek(parseInt(e.target.value))
               );
+          },
+
+          bindOperatorCueControls() {
+            const audioToggle = document.getElementById('audioCueToggle');
+            const hapticToggle = document.getElementById('hapticCueToggle');
+            const motionToggle = document.getElementById('motionCueToggle');
+
+            if (audioToggle) {
+              operatorCueRuntime.audioEnabled = audioToggle.checked;
+              audioToggle.addEventListener('change', (e) => {
+                operatorCueRuntime.audioEnabled = e.target.checked;
+                if (operatorCueRuntime.audioEnabled) this.fireOperatorCue('button');
+              });
+            }
+
+            if (hapticToggle) {
+              operatorCueRuntime.hapticsEnabled = hapticToggle.checked;
+              hapticToggle.addEventListener('change', (e) => {
+                operatorCueRuntime.hapticsEnabled = e.target.checked;
+                if (operatorCueRuntime.hapticsEnabled) this.vibrateCue(20);
+              });
+            }
+
+            if (motionToggle) {
+              operatorCueRuntime.motionEnabled = motionToggle.checked;
+              motionToggle.addEventListener('change', (e) => {
+                operatorCueRuntime.motionEnabled = e.target.checked;
+              });
+            }
           },
 
           /**
@@ -4532,6 +4959,368 @@ Promote to index.html only after validation.
             };
           },
 
+          /**
+           * PHOENIX v10.1 CONCEPT — central operator guidance brain.
+           *
+           * One guidance object feeds:
+           * - guidance panel
+           * - step rail
+           * - sync dock wording
+           * - audio cue decisions
+           * - haptic cue decisions
+           *
+           * This does not change machine behavior.
+           */
+          deriveOperatorGuidance() {
+            const s = this.state;
+            const close = this.getCloseEligibility ? this.getCloseEligibility() : null;
+            const mode = s.machine?.mode || MODE.OFFLINE;
+
+            if (s.breaker === 'TRIPPED' || mode === MODE.TRIPPED) {
+              return {
+                phase: 'REVIEW',
+                action: 'Reset breaker and review trip cause.',
+                reason: s.lastTripReason || 'Protection trip occurred.',
+                risk: 'Do not re-close until the cause is understood.',
+                severity: 'faulted',
+                cue: 'trip'
+              };
+            }
+
+            if (!s.simRunning || mode === MODE.OFFLINE) {
+              return {
+                phase: 'SIM',
+                action: 'Press SIM START.',
+                reason: 'Simulation clock is stopped.',
+                risk: 'No operating risk.',
+                severity: 'active',
+                cue: 'idle'
+              };
+            }
+
+            if (!s.gridStarted || mode === MODE.IDLE) {
+              return {
+                phase: 'GRID',
+                action: 'Press GRID START.',
+                reason: 'Grid bus must be energized before synchronizing.',
+                risk: 'Generator cannot sync to a dead reference.',
+                severity: 'active',
+                cue: 'grid_wait'
+              };
+            }
+
+            if (mode === MODE.GRID_WARMUP || !s.gridHealthy) {
+              return {
+                phase: 'GRID',
+                action: 'Stand by for grid healthy.',
+                reason: 'Grid voltage and frequency are stabilizing.',
+                risk: 'Starting sync work too early creates bad reference conditions.',
+                severity: 'blocked',
+                cue: 'grid_warmup'
+              };
+            }
+
+            if (!s.genStarted || mode === MODE.GRID_READY) {
+              return {
+                phase: 'GEN',
+                action: 'Press GEN START.',
+                reason: 'Grid is healthy and generator is offline.',
+                risk: 'No sync attempt possible until generator is online.',
+                severity: 'active',
+                cue: 'gen_wait'
+              };
+            }
+
+            if (mode === MODE.GEN_STARTING) {
+              return {
+                phase: 'GEN',
+                action: 'Monitor generator start.',
+                reason: 'Generator is coming online.',
+                risk: 'Wait for voltage and speed to stabilize.',
+                severity: 'blocked',
+                cue: 'gen_starting'
+              };
+            }
+
+            if (s.breaker === 'CLOSED' || mode === MODE.PARALLEL) {
+              return {
+                phase: 'REVIEW',
+                action: 'Review power flow and event log.',
+                reason: 'Generator is paralleled with the grid.',
+                risk: 'Watch load, current, and post-close stability.',
+                severity: 'complete',
+                cue: 'parallel'
+              };
+            }
+
+            if (close && close.canClose) {
+              return {
+                phase: 'CLOSE',
+                action: 'SYNC WINDOW OPEN — close near 12 o’clock.',
+                reason: 'Voltage, frequency, and phase are inside the safe window.',
+                risk: 'Low, if closure is timed correctly.',
+                severity: 'active',
+                cue: 'sync_ready'
+              };
+            }
+
+            if (close && !close.canClose) {
+              return {
+                phase: 'MATCH',
+                action: 'Match voltage, speed, and phase.',
+                reason: close.reasonText || close.reason || 'Sync conditions are not yet safe.',
+                risk: 'Unsafe close may trip breaker or stress the machine.',
+                severity: 'blocked',
+                cue: 'sync_wait'
+              };
+            }
+
+            return {
+              phase: 'MATCH',
+              action: 'Observe system state.',
+              reason: 'No specific operator action derived.',
+              risk: 'Maintain awareness.',
+              severity: 'active',
+              cue: 'observe'
+            };
+          },
+
+          getAudioContext() {
+            if (!operatorCueRuntime.audioEnabled) return null;
+
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return null;
+
+            if (!operatorCueRuntime.audioCtx) {
+              operatorCueRuntime.audioCtx = new AudioContext();
+            }
+
+            if (operatorCueRuntime.audioCtx.state === 'suspended') {
+              operatorCueRuntime.audioCtx.resume();
+            }
+
+            return operatorCueRuntime.audioCtx;
+          },
+
+          playTone(freq = 440, durationMs = 120, type = 'sine', gainValue = 0.03) {
+            const ctx = this.getAudioContext();
+            if (!ctx) return;
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+            gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(gainValue, ctx.currentTime + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + durationMs / 1000);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start();
+            osc.stop(ctx.currentTime + durationMs / 1000 + 0.03);
+          },
+
+          vibrateCue(pattern) {
+            if (!operatorCueRuntime.hapticsEnabled) return;
+            if (!('vibrate' in navigator)) return;
+            navigator.vibrate(pattern);
+          },
+
+          fireOperatorCue(type) {
+            const now = performance.now();
+
+            // Cue spam guard. Without this, the app becomes an angry microwave.
+            if (now - operatorCueRuntime.lastCueAt < 160) return;
+            operatorCueRuntime.lastCueAt = now;
+
+            const loggableCues = new Set([
+              'grid_healthy',
+              'sync_ready',
+              'breaker_closed',
+              'trip',
+              'fault',
+              'clear'
+            ]);
+
+            if (loggableCues.has(type) && typeof this.log === 'function') {
+              this.log(`Operator cue: ${type.replaceAll('_', ' ')}`, 'good');
+            }
+
+            switch (type) {
+              case 'button':
+                this.playTone(520, 35, 'sine', 0.015);
+                this.vibrateCue(12);
+                break;
+
+              case 'sim_start':
+                this.playTone(330, 80, 'sine', 0.025);
+                setTimeout(() => this.playTone(440, 90, 'sine', 0.025), 90);
+                this.vibrateCue(20);
+                break;
+
+              case 'grid_healthy':
+                this.playTone(520, 80, 'sine', 0.025);
+                setTimeout(() => this.playTone(700, 100, 'sine', 0.025), 90);
+                this.vibrateCue([20, 35, 20]);
+                break;
+
+              case 'gen_start':
+                this.playTone(90, 140, 'triangle', 0.035);
+                setTimeout(() => this.playTone(130, 160, 'triangle', 0.03), 120);
+                this.vibrateCue([45, 40, 35]);
+                break;
+
+              case 'sync_ready':
+                this.playTone(660, 90, 'sine', 0.025);
+                setTimeout(() => this.playTone(880, 110, 'sine', 0.025), 95);
+                this.vibrateCue([20, 35, 20]);
+                break;
+
+              case 'breaker_closed':
+                this.playTone(95, 90, 'square', 0.04);
+                setTimeout(() => this.playTone(55, 80, 'sine', 0.03), 55);
+                this.vibrateCue(70);
+                break;
+
+              case 'trip':
+                this.playTone(220, 120, 'sawtooth', 0.04);
+                setTimeout(() => this.playTone(180, 160, 'sawtooth', 0.04), 130);
+                this.vibrateCue([80, 40, 80, 40, 120]);
+                break;
+
+              case 'fault':
+                this.playTone(260, 130, 'sawtooth', 0.035);
+                this.vibrateCue([50, 40, 50]);
+                break;
+
+              case 'clear':
+                this.playTone(440, 80, 'sine', 0.02);
+                setTimeout(() => this.playTone(620, 90, 'sine', 0.02), 80);
+                this.vibrateCue(25);
+                break;
+
+              default:
+                break;
+            }
+          },
+
+          showMissionCountdown(label = 'MISSION START', seconds = 3, onDone = null) {
+            if (!operatorCueRuntime.motionEnabled) {
+              if (typeof onDone === 'function') onDone();
+              return;
+            }
+
+            const overlay = document.getElementById('missionCountOverlay');
+            const numberEl = document.getElementById('missionCountNumber');
+            const labelEl = document.getElementById('missionCountLabel');
+
+            if (!overlay || !numberEl || !labelEl) {
+              if (typeof onDone === 'function') onDone();
+              return;
+            }
+
+            let count = seconds;
+
+            labelEl.textContent = label;
+            overlay.classList.add('active');
+            overlay.setAttribute('aria-hidden', 'false');
+
+            const tick = () => {
+              numberEl.textContent = count;
+              numberEl.style.animation = 'none';
+              numberEl.offsetHeight;
+              numberEl.style.animation = '';
+
+              count -= 1;
+
+              if (count < 0) {
+                overlay.classList.remove('active');
+                overlay.setAttribute('aria-hidden', 'true');
+
+                if (typeof onDone === 'function') onDone();
+                return;
+              }
+
+              setTimeout(tick, 850);
+            };
+
+            tick();
+          },
+
+          updateOperatorCueLayer() {
+            const guidance = this.deriveOperatorGuidance();
+
+            const panel = document.getElementById('guidancePanel');
+            if (panel) {
+              panel.innerHTML = `
+                <div style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin-bottom: 5px;">
+                  ${guidance.phase} · ${guidance.severity.toUpperCase()}
+                </div>
+                <div style="font-size: 15px; font-weight: 900; color: var(--text);">
+                  ${guidance.action}
+                </div>
+                <div style="margin-top: 5px; color: var(--muted); font-size: 12px;">
+                  ${guidance.reason}
+                </div>
+                <div style="margin-top: 5px; color: var(--gold); font-size: 11px;">
+                  ${guidance.risk}
+                </div>
+              `;
+            }
+
+            const steps = document.querySelectorAll('.operator-step');
+            steps.forEach((step) => {
+              const stepName = step.dataset.step;
+              step.classList.remove('active', 'complete', 'blocked', 'faulted');
+
+              const order = ['SIM', 'GRID', 'GEN', 'MATCH', 'CLOSE', 'REVIEW'];
+              const currentIndex = order.indexOf(guidance.phase);
+              const stepIndex = order.indexOf(stepName);
+
+              if (guidance.severity === 'faulted' && stepName === guidance.phase) {
+                step.classList.add('faulted');
+              } else if (stepName === guidance.phase) {
+                step.classList.add(guidance.severity === 'blocked' ? 'blocked' : 'active');
+              } else if (stepIndex >= 0 && currentIndex >= 0 && stepIndex < currentIndex) {
+                step.classList.add('complete');
+              }
+            });
+
+            const syncReason = document.getElementById('syncReason');
+            if (syncReason) {
+              syncReason.textContent = guidance.reason;
+            }
+
+            const close = this.getCloseEligibility ? this.getCloseEligibility() : null;
+            const syncReady = !!(close && close.canClose);
+
+            if (syncReady && !operatorCueRuntime.wasSyncReady && this.state.breaker !== 'CLOSED') {
+              this.fireOperatorCue('sync_ready');
+            }
+
+            if (this.state.breaker === 'CLOSED' && operatorCueRuntime.lastBreaker !== 'CLOSED') {
+              this.fireOperatorCue('breaker_closed');
+            }
+
+            if (this.state.breaker === 'TRIPPED' && operatorCueRuntime.lastBreaker !== 'TRIPPED') {
+              this.fireOperatorCue('trip');
+            }
+
+            if (
+              this.state.machine?.mode === MODE.GRID_READY &&
+              operatorCueRuntime.lastMode === MODE.GRID_WARMUP
+            ) {
+              this.fireOperatorCue('grid_healthy');
+            }
+
+            operatorCueRuntime.wasSyncReady = syncReady;
+            operatorCueRuntime.lastBreaker = this.state.breaker;
+            operatorCueRuntime.lastMode = this.state.machine?.mode || MODE.OFFLINE;
+          },
+
           applyModeDerivedState() {
             const s = this.state;
             const mode = s.machine.mode;
@@ -4608,7 +5397,14 @@ Promote to index.html only after validation.
             }
           },
 
-          // Refresh the compact scenario status panel. This panel provides at-a-glance information on the current scenario state and key parameters relevant to training, without needing to open the full debrief. It is updated on every tick and whenever scenario-related events occur.
+          /**
+           * updateScenarioStatePanel()
+           *
+           * Update the compact scenario state readout displayed in the UI. This shows whether a drill is active,
+           * whether the arming/injection conditions have been met, whether the drill has succeeded or failed,
+           * the elapsed time since the scenario started, and the scenario philosophy. This helper is called
+           * from updateUI() on each frame. If no scenario is active, the fields are cleared.
+           */
           updateScenarioStatePanel() {
             const sc = this.state.scenario;
             // If the scenario state DOM elements are not present (e.g. on older builds), do nothing.
@@ -4621,6 +5417,7 @@ Promote to index.html only after validation.
               this.els.scElapsed.textContent = '0.0 s';
               this.els.scType.textContent = '—';
               if (this.els.scStable) this.els.scStable.textContent = '—';
+              if (this.els.scRemaining) this.els.scRemaining.textContent = '—';
               return;
             }
             // Active/inactive status
@@ -4639,8 +5436,23 @@ Promote to index.html only after validation.
             }
             this.els.scResult.textContent = res;
             // Elapsed time since scenario start
-            const elapsed = sc.startTime ? ((Date.now() - sc.startTime) / 1000).toFixed(1) : '0.0';
+            const elapsedNum = sc.startTime ? (Date.now() - sc.startTime) / 1000 : 0;
+            const elapsed = elapsedNum.toFixed(1);
             this.els.scElapsed.textContent = `${elapsed} s`;
+
+            if (this.els.scRemaining) {
+              const maxDuration =
+                sc.definition && typeof sc.definition.maxDurationSec === 'number'
+                  ? sc.definition.maxDurationSec
+                  : null;
+
+              if (sc.active && maxDuration) {
+                const remaining = Math.max(0, maxDuration - elapsedNum);
+                this.els.scRemaining.textContent = `${remaining.toFixed(1)} s`;
+              } else {
+                this.els.scRemaining.textContent = '—';
+              }
+            }
             // Scenario type/philosophy
             const type = sc.definition && sc.definition.type ? sc.definition.type : '—';
             const labelMap = {
@@ -4672,7 +5484,14 @@ Promote to index.html only after validation.
               }
             }
           },
-          // Restore saved progression state from localStorage. This includes best scores, total score, unlocks and rank. Called on app init to populate the progression tab with persisted data.
+          /**
+           * loadProgression()
+           *
+           * Load persistent progression data from localStorage. This includes best scores,
+           * total accumulated score, unlocked modules and operator rank. If no saved
+           * data is found or parsing fails, the existing state values remain. This
+           * helper should be called during init() to restore progression across sessions.
+           */
           loadProgression() {
             try {
               const saved = localStorage.getItem('phoenix_progression');
@@ -4688,7 +5507,13 @@ Promote to index.html only after validation.
             }
           },
 
-          // Save progression state to localStorage. This includes best scores, total score, unlocks and rank. Called after progression updates to persist new state.
+          /**
+           * saveProgression()
+           *
+           * Persist current progression data to localStorage. Serialises best scores,
+           * totalScore, unlocks and rank into a JSON string. Called whenever
+           * progression is updated.
+           */
           saveProgression() {
             try {
               const data = {
@@ -4841,7 +5666,13 @@ Promote to index.html only after validation.
             if (adv) adv.style.display = this.state.unlocks.advTelemetry ? 'block' : 'none';
           },
 
-          // Rebuild the playbook cards from the scenario map. Each card shows the scenario name, objective, type/philosophy and high-level guidance. Called when the playbook tab is opened to ensure content is up to date with any scenario changes.
+          /**
+           * renderPlaybook()
+           *
+           * Build or update the playbook tab with scenario briefings. Each card summarises
+           * the objective, philosophy and high‑level guidance for the corresponding
+           * scenario. Run this when the playbook tab is activated.
+           */
           renderPlaybook() {
             const container = document.getElementById('playbookCards');
             if (!container) return;
@@ -5100,7 +5931,13 @@ Promote to index.html only after validation.
             }
           },
 
-          // Training view only. Shows field relationship, not a physics-grade machine model.
+          /**
+           * drawFluxView()
+           *
+           * Training abstraction showing rotor field, stator pickup, grid reference,
+           * phase angle, slip, flux strength, and stress.
+           * This is not a finite-element electromagnetic model.
+           */
           drawFluxView() {
             const c = this.els.fluxCanvas;
             const ctx = this.fluxCtx;
@@ -5578,10 +6415,10 @@ Promote to index.html only after validation.
             let cat = 'Operator';
             const lc = (level || '').toLowerCase();
             const upperMsg = msg.toUpperCase();
-            if (lc.includes('fault') || upperMsg.includes('FAULT')) cat = 'Fault';
-            else if (lc === 'trip' || upperMsg.includes('TRIP')) cat = 'Trip';
+            if (upperMsg.startsWith('STATE')) cat = 'State';
             else if (lc === 'scenario' || upperMsg.includes('SCENARIO')) cat = 'Scenario';
-            else if (upperMsg.startsWith('STATE')) cat = 'State';
+            else if (lc === 'trip' || upperMsg.includes('PROTECTION TRIP')) cat = 'Trip';
+            else if (lc.includes('fault') || upperMsg.includes('FAULT')) cat = 'Fault';
             else if (lc === 'telemetry' || upperMsg.includes('HZ') || upperMsg.includes('KV'))
               cat = 'Telemetry';
             if (lc === 'closecmd') cat = 'Operator';
@@ -5685,12 +6522,33 @@ Promote to index.html only after validation.
               this.state.autoMatch ? 'good' : 'warn'
             );
           },
+          /**
+           * logLoadRequest()
+           *
+           * Throttles repeated load request logging so the SOE stays readable.
+           * This does not change load physics. It only prevents identical or
+           * rapid repeated log entries from flooding the event record.
+           */
+          logLoadRequest(direction) {
+            const now = performance.now();
+            const roundedLoad = Math.round(this.state.loadDemandKW);
+            const lastKW = this.state.lastLoadLogKW;
+            const lastAt = this.state.lastLoadLogAt || 0;
+
+            if (lastKW === roundedLoad && now - lastAt < 750) return;
+
+            this.state.lastLoadLogKW = roundedLoad;
+            this.state.lastLoadLogAt = now;
+
+            const label = direction === 'lowered' ? 'lowered' : 'raised';
+            const level = direction === 'lowered' ? 'warn' : 'good';
+
+            this.log(`Load request ${label} to ${roundedLoad} kW.`, level);
+          },
+
           raiseLoad() {
             this.state.loadDemandKW = this.clamp(this.state.loadDemandKW + 350, 1800, 9000);
-            this.log(
-              'Load request raised to ' + Math.round(this.state.loadDemandKW) + ' kW.',
-              'good'
-            );
+            this.logLoadRequest('raised');
           },
 
           /**
@@ -5701,10 +6559,7 @@ Promote to index.html only after validation.
            */
           lowerLoad() {
             this.state.loadDemandKW = this.clamp(this.state.loadDemandKW - 350, 1800, 9000);
-            this.log(
-              'Load request lowered to ' + Math.round(this.state.loadDemandKW) + ' kW.',
-              'warn'
-            );
+            this.logLoadRequest('lowered');
           },
           resetAll() {
             clearTimeout(this.state.replayTimer);
@@ -5722,7 +6577,12 @@ Promote to index.html only after validation.
             // clear markers and trip reason on full reset
             this.state.markers = [];
             this.state.lastTripReason = '';
-            this.log('Full system reset.', 'warn');
+            this.state.lastLoadLogKW = null;
+            this.state.lastLoadLogAt = 0;
+            operatorCueRuntime.wasSyncReady = false;
+            operatorCueRuntime.lastBreaker = 'OPEN';
+            operatorCueRuntime.lastMode = MODE.OFFLINE;
+            this.log('Full system reset. Cue state and load-log memory cleared.', 'warn');
             this.updateUI();
 
             // Ensure instructor toggles reflect restored state after reset
@@ -5870,7 +6730,7 @@ Promote to index.html only after validation.
             }
             // All clear: close command
             this.dispatch(EVENT.BREAKER_CLOSE_CMD);
-            // Mark the close command on the trend
+            // record marker for operator close command
             this.recordMarker('close_cmd');
             this.state.brkrClosingTimer = 0.12;
             this.state.postCloseHold = 1.2;
@@ -6438,7 +7298,7 @@ Promote to index.html only after validation.
               tripEvents: [],
               mistakes: []
             };
-            this.log(`SCENARIO STARTED: ${id.toUpperCase()} — ${def.objective}`, 'good');
+            this.log(`SCENARIO STARTED: ${id.toUpperCase()} — ${def.objective}`, 'scenario');
             // Provide tactile feedback to indicate scenario start
             this.vibrate([30, 20, 30]);
             // Start the simulation and grid immediately. The scenario engine will handle further sequencing.
@@ -6629,7 +7489,7 @@ Promote to index.html only after validation.
             // Log scenario completion event with clear result and score. Use a success level when successful.
             this.log(
               `SCENARIO COMPLETE — ${resultStr} — Score ${Math.round(this.state.scenario.score)}`,
-              reason === 'success' ? 'good' : 'scenario'
+              'scenario'
             );
             this.state.lastScore = this.state.scenario.score;
             // Update best score tracking only on success
@@ -7165,6 +8025,163 @@ Promote to index.html only after validation.
             this.updateScenarioStatePanel();
             // Update mission briefing strip with current scenario info, rank and unlocks
             if (typeof this.updateMissionStrip === 'function') this.updateMissionStrip();
+            if (typeof this.updateOperatorCueLayer === 'function') {
+              this.updateOperatorCueLayer();
+            }
+          },
+
+          /**
+           * drawPhasorInsight()
+           *
+           * Ring 3A read-only training visual.
+           * Shows grid and generator voltage phasors using existing simulator state.
+           * This function must never change breaker logic, sync thresholds, faults, or scoring.
+           */
+          drawPhasorInsight() {
+            const canvas = this.els.phasorCanvas;
+            const ctx = this.phasorCtx;
+            if (!canvas || !ctx) return;
+
+            const s = this.state;
+            const close = this.getCloseEligibility ? this.getCloseEligibility() : null;
+
+            const w = canvas.width;
+            const h = canvas.height;
+            const cx = w / 2;
+            const cy = h / 2 + 4;
+            const r = Math.min(w, h) * 0.32;
+
+            ctx.clearRect(0, 0, w, h);
+            ctx.fillStyle = '#08101c';
+            ctx.fillRect(0, 0, w, h);
+
+            // Background grid rings.
+            ctx.strokeStyle = 'rgba(120,180,255,0.10)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i <= 3; i++) {
+              ctx.beginPath();
+              ctx.arc(cx, cy, (r * i) / 3, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+
+            // Crosshair.
+            ctx.strokeStyle = 'rgba(150,166,188,0.18)';
+            ctx.beginPath();
+            ctx.moveTo(cx - r - 18, cy);
+            ctx.lineTo(cx + r + 18, cy);
+            ctx.moveTo(cx, cy - r - 18);
+            ctx.lineTo(cx, cy + r + 18);
+            ctx.stroke();
+
+            const gridAngle = s.gridAngle || 0;
+            const genAngle = s.breaker === 'CLOSED' ? gridAngle : s.genAngle || 0;
+
+            const gridMag = this.clamp((s.gridV || 0) / 13.8, 0, 1.15);
+            const genMag = this.clamp(
+              (s.breaker === 'CLOSED' ? s.gridV : s.genV || 0) / 13.8,
+              0,
+              1.15
+            );
+
+            const drawVector = (angleDeg, mag, color, label, widthPx) => {
+              const a = ((angleDeg - 90) * Math.PI) / 180;
+              const len = r * mag;
+              const x = cx + Math.cos(a) * len;
+              const y = cy + Math.sin(a) * len;
+
+              ctx.strokeStyle = color;
+              ctx.fillStyle = color;
+              ctx.lineWidth = widthPx;
+              ctx.beginPath();
+              ctx.moveTo(cx, cy);
+              ctx.lineTo(x, y);
+              ctx.stroke();
+
+              // Arrow head.
+              const ah = 8;
+              ctx.beginPath();
+              ctx.moveTo(x, y);
+              ctx.lineTo(x - Math.cos(a - 0.45) * ah, y - Math.sin(a - 0.45) * ah);
+              ctx.lineTo(x - Math.cos(a + 0.45) * ah, y - Math.sin(a + 0.45) * ah);
+              ctx.closePath();
+              ctx.fill();
+
+              ctx.font = '10px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText(label, x, y - 8);
+            };
+
+            drawVector(gridAngle, gridMag, '#59d7ff', 'GRID', 3);
+            drawVector(genAngle, genMag, '#f6c453', 'GEN', 4);
+
+            // Phase separation arc.
+            const phaseGap = s.breaker === 'CLOSED' ? 0 : this.wrapDeg(s.phaseDeg || 0);
+            const arcStart = ((gridAngle - 90) * Math.PI) / 180;
+            const arcEnd = ((genAngle - 90) * Math.PI) / 180;
+
+            ctx.strokeStyle =
+              Math.abs(phaseGap) < 5 ? 'rgba(49,210,138,0.72)' : 'rgba(246,196,83,0.72)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r + 18, arcStart, arcEnd, phaseGap < 0);
+            ctx.stroke();
+
+            ctx.fillStyle = '#dce9f8';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            const displayGenV = s.breaker === 'CLOSED' ? s.gridV : s.genV;
+            const displayGenAngle = s.breaker === 'CLOSED' ? 0 : this.wrapDeg(s.phaseDeg || 0);
+
+            if (this.els.phasorGridRead) {
+              this.els.phasorGridRead.textContent = `${(s.gridV || 0).toFixed(2)} kV ∠ 0.0°`;
+            }
+
+            if (this.els.phasorGenRead) {
+              this.els.phasorGenRead.textContent = `${(displayGenV || 0).toFixed(2)} kV ∠ ${displayGenAngle.toFixed(1)}°`;
+            }
+
+            if (this.els.phasorPhaseRead) {
+              this.els.phasorPhaseRead.textContent = `${Math.abs(phaseGap).toFixed(1)}°`;
+            }
+
+            if (this.els.phasorCloseRead) {
+              this.els.phasorCloseRead.textContent =
+                s.breaker === 'CLOSED' ? 'CLOSED' : close && close.canClose ? 'READY' : 'BLOCKED';
+            }
+            if (this.els.phasorFlowRead) {
+              if (s.breaker === 'CLOSED') {
+                const p = Math.round(s.pKW || 0);
+                const q = (s.qMVAr || 0).toFixed(2);
+                this.els.phasorFlowRead.textContent = `${p} kW / ${q} MVAr`;
+              } else if (s.breaker === 'TRIPPED') {
+                this.els.phasorFlowRead.textContent = 'TRIPPED';
+              } else {
+                this.els.phasorFlowRead.textContent = 'OPEN CIRCUIT';
+              }
+            }
+
+            if (this.els.phasorStatus) {
+              let cls = 'phasor-status blocked';
+              let msg = close ? close.reasonText : 'Waiting for simulator state.';
+
+              if (s.breaker === 'TRIPPED') {
+                cls = 'phasor-status trip';
+                msg = 'Breaker tripped. Review cause before re-close.';
+              } else if (s.breaker === 'CLOSED') {
+                cls = 'phasor-status ready';
+                msg = 'Vectors locked. Breaker closed. Current and power flow are now active.';
+              } else if (close && close.canClose) {
+                cls = 'phasor-status ready';
+                msg = 'Vectors aligned. Close window is available.';
+              } else if (close && close.reasonText) {
+                msg = close.reasonText;
+              }
+
+              this.els.phasorStatus.className = cls;
+              this.els.phasorStatus.textContent = msg;
+            }
           },
 
           drawScope() {
@@ -7386,6 +8403,7 @@ Promote to index.html only after validation.
             this.pushHistory();
             this.updateUI();
             this.drawScope();
+            this.drawPhasorInsight();
             // Animate rotor visual every frame using elapsed time
             this.updateRotor(dt);
             this.drawFluxView();
@@ -7400,3 +8418,4 @@ Promote to index.html only after validation.
     </script>
   </body>
 </html>
+
